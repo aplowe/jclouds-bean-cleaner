@@ -72,8 +72,6 @@ public class DomainObjectDocletCleaner extends Doclet {
       }
 
       command.addAll(listFileNames(new File(sourcePath)));
-
-      System.out.println("\"" + Joiner.on("\" \"").join(command) + "\"");
        
       Process process = Runtime.getRuntime().exec(command.toArray(new String[command.size()]));
 
