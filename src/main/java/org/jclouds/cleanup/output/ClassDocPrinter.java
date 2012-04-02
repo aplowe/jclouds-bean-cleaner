@@ -199,9 +199,9 @@ public abstract class ClassDocPrinter {
          fieldType += ">";
       }
 
-      if (field.type().isPrimitive() ||
-            field.type().asClassDoc().containingPackage().name().equals("java.lang") ||
-            field.type().asClassDoc().containingPackage().equals(field.containingClass().containingPackage()) ||
+      if (field.type().isPrimitive() || field.type().asClassDoc().containingPackage().name().equals("java.lang")) {
+         return field.type().simpleTypeName();
+      } else if (field.type().asClassDoc().containingPackage().equals(field.containingClass().containingPackage()) ||
             imports.contains("import " + field.type().qualifiedTypeName() + ";") ||
             imports.contains("import " + field.type().asClassDoc().containingPackage().name() + "*" + ";")) {
          if (field.type().asClassDoc().containingClass() != null) {
