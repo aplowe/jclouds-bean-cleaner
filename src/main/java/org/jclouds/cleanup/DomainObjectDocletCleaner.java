@@ -73,17 +73,21 @@ public class DomainObjectDocletCleaner extends Doclet {
 
       command.addAll(listFileNames(new File(sourcePath)));
 
+      System.out.println("\"" + Joiner.on("\" \"").join(command) + "\"");
+       
       Process process = Runtime.getRuntime().exec(command.toArray(new String[command.size()]));
 
       BufferedReader processOutput = new BufferedReader(new InputStreamReader(process.getInputStream()));
       BufferedReader processError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-      String line;
-      while ((line = processOutput.readLine()) != null) {
-         System.out.println("INFO: jclouds cleaner: " + line);
+
+      String stdout = "Running cleaner...", stderr = null;
+      while (stdout != null || stderr != null) {
+         stdout = processOutput.readLine();
+         stderr = processError.readLine();    
+         if (stdout != null) System.out.println("INFO: jclouds cleaner: " + stdout);
+         if (stderr != null) System.out.println("ERROR: jclouds cleaner: " + stderr);
       }
-      while ((line = processError.readLine()) != null) {
-         System.out.println("ERROR: jclouds cleaner: " + line);
-      }
+
       process.destroy();
 
       if (process.exitValue() == 0) {
