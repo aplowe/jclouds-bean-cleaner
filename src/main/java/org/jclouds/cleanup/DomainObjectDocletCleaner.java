@@ -74,21 +74,14 @@ public class DomainObjectDocletCleaner extends Doclet {
       command.addAll(listFileNames(new File(sourcePath)));
        
       Process process = Runtime.getRuntime().exec(command.toArray(new String[command.size()]));
+       
+      StreamGobbler in = new StreamGobbler(process.getInputStream(), "INFO");
+      StreamGobbler err = new StreamGobbler(process.getErrorStream(), "ERROR");
 
-      BufferedReader processOutput = new BufferedReader(new InputStreamReader(process.getInputStream()));
-      BufferedReader processError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+      in.start();
+      err.start();
 
-      String stdout = "Running cleaner...", stderr = null;
-      while (stdout != null || stderr != null) {
-         stdout = processOutput.readLine();
-         stderr = processError.readLine();    
-         if (stdout != null) System.out.println("INFO: jclouds cleaner: " + stdout);
-         if (stderr != null) System.out.println("ERROR: jclouds cleaner: " + stderr);
-      }
-
-      process.destroy();
-
-      if (process.exitValue() == 0) {
+      if (process.waitFor() == 0) {
          System.out.println("Javadoc returned successfully");
       } else {
          System.out.println("Javadoc returned an error code");
