@@ -1,40 +1,26 @@
 package org.jclouds.cleanup;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import org.jclouds.cleanup.output.BeanBuilderPrinter;
-import org.jclouds.cleanup.output.BeanPrinter;
-import org.jclouds.cleanup.output.ClassDocPrinter;
-import org.jclouds.cleanup.output.IndentedPrintWriter;
-import org.jclouds.cleanup.output.InstanceFieldPrinter;
-import org.jclouds.cleanup.output.StaticFieldPrinter;
-import org.jclouds.cleanup.output.bean.AccessorPrinter;
-import org.jclouds.cleanup.output.bean.BuilderArgConstructorPrinter;
-import org.jclouds.cleanup.output.bean.EqualsPrinter;
-import org.jclouds.cleanup.output.bean.HashCodePrinter;
-import org.jclouds.cleanup.output.bean.NoArgsConstructorPrinter;
-import org.jclouds.cleanup.output.bean.ToStringPrinter;
-
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.io.PatternFilenameFilter;
-import com.sun.javadoc.ClassDoc;
-import com.sun.javadoc.DocErrorReporter;
-import com.sun.javadoc.Doclet;
-import com.sun.javadoc.LanguageVersion;
-import com.sun.javadoc.RootDoc;
+import com.sun.javadoc.*;
+import freemarker.cache.ClassTemplateLoader;
+import freemarker.template.Configuration;
+import freemarker.template.Template;
+import org.jclouds.cleanup.data.Bean;
+import org.jclouds.cleanup.doclet.ClassDocParser;
+
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Interrogates the class structure using the doclet api and extracts the comments immediately preceding classes, fields
@@ -46,8 +32,8 @@ import com.sun.javadoc.RootDoc;
  */
 public class DomainObjectDocletCleaner extends Doclet {
    private static String outputPath = "target/generated-sources/cleanbeans";
-   private static boolean jaxbOutput = false;
-   private static boolean minimalOutput = false;
+   private static String format = "Standard";
+   private static Configuration cfg = new Configuration();
 
    /**
     * Bootstrapping javadoc application to save users having to remember all the arguments.
@@ -72,9 +58,9 @@ public class DomainObjectDocletCleaner extends Doclet {
       }
 
       command.addAll(listFileNames(new File(sourcePath)));
-       
+
       Process process = Runtime.getRuntime().exec(command.toArray(new String[command.size()]));
-       
+
       StreamGobbler in = new StreamGobbler(process.getInputStream(), "INFO");
       StreamGobbler err = new StreamGobbler(process.getErrorStream(), "ERROR");
 
@@ -98,20 +84,19 @@ public class DomainObjectDocletCleaner extends Doclet {
    }
 
    /**
-    * Adding -d option for output path and -z for structure output
+    * Adding -d option for output path and -format for output format
     *
     * @see com.sun.javadoc.Doclet#optionLength(String)
     */
    @SuppressWarnings("unused")
    public static int optionLength(String option) {
       if (Objects.equal(option, "-d")) return 2;
-      if (Objects.equal(option, "-z")) return 1;
-      if (Objects.equal(option, "-jaxb")) return 1;
+      if (Objects.equal(option, "-format")) return 2;
       return Doclet.optionLength(option);
    }
 
    /**
-    * Adding -d option for output path and -z for structure output
+    * Adding -d option for output path and -format for output format
     *
     * @see com.sun.javadoc.Doclet#validOptions(String[][], com.sun.javadoc.DocErrorReporter)
     */
@@ -127,48 +112,28 @@ public class DomainObjectDocletCleaner extends Doclet {
     */
    @SuppressWarnings("unused")
    public static boolean start(RootDoc root) {
+      cfg.setTemplateLoader(new ClassTemplateLoader(DomainObjectDocletCleaner.class, "/"));
+
       try {
          readOptions(root.options());
-         List<ClassDocPrinter> printers;
-         if (jaxbOutput) {
-            printers = ImmutableList.of(
-                  new StaticFieldPrinter(),
-                  new BeanBuilderPrinter(),
-                  new InstanceFieldPrinter(true, true, false),
-                  new BuilderArgConstructorPrinter(),
-                  new NoArgsConstructorPrinter("for JAXB"),
-                  new AccessorPrinter(),
-                  new EqualsPrinter(),
-                  new HashCodePrinter(),
-                  new ToStringPrinter());
-         } else if (minimalOutput) {
-            printers = ImmutableList.<ClassDocPrinter>of(new StaticFieldPrinter(), new InstanceFieldPrinter(true, true, true));
-         } else {
-            printers = ImmutableList.of(
-                  new StaticFieldPrinter(),
-                  new BeanBuilderPrinter(),
-                  new InstanceFieldPrinter(true, true, false),
-                  new BuilderArgConstructorPrinter(),
-                  new AccessorPrinter(),
-                  new EqualsPrinter(),
-                  new HashCodePrinter(),
-                  new ToStringPrinter());
-         }
 
+         ClassDocParser parser = new ClassDocParser();
+         Template template = cfg.getTemplate(format + "Bean.ftl");
 
-         BeanPrinter writer = new BeanPrinter(outputPath, printers);
          for (ClassDoc clazz : root.classes()) {
+            Bean bean = parser.parseBean(clazz);
+
             String className = clazz.simpleTypeName();
             String packageName = clazz.containingPackage().name();
             File outputFile = new File(outputPath, packageName.replaceAll("\\.", File.separator) + File.separator + className + ".java");
             outputFile.getParentFile().mkdirs();
             System.out.println("Processing " + clazz.name() + " writing to " + outputFile.getAbsolutePath());
             if (clazz.containingClass() == null) {
-               writer.write(clazz, new IndentedPrintWriter(new FileOutputStream(outputFile)));
+               template.process(bean, new FileWriter(outputFile));
             }
          }
          return true;
-      } catch (IOException e) {
+      } catch (Exception e) {
          throw Throwables.propagate(e);
       }
    }
@@ -178,12 +143,8 @@ public class DomainObjectDocletCleaner extends Doclet {
          if (opt[0].equals("-d")) {
             outputPath = opt[1];
          }
-         if (opt[0].equals("-jaxb")) {
-            jaxbOutput = true;
-         }
-         if (opt[0].equals("-z")) {
-            System.out.println("minimizing!");
-            minimalOutput = true;
+         if (opt[0].equals("-format")) {
+            format = opt[1];
          }
       }
    }

@@ -13,7 +13,7 @@ public class VCloudTest extends AbstractTest {
 
     @Test
     public void testSimpleTypes() throws Exception {
-        File packageDir = generateBeans("/org/jclouds/vcloud/director/v1_5/domain");
+        File packageDir = generateBeans("/org/jclouds/vcloud/director/v1_5/domain", "Jaxb");
         assertEquals(packageDir.listFiles().length, 10);
     }
 

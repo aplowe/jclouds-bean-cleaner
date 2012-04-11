@@ -16,34 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.jclouds.cleanup.output.bean;
+package org.jclouds.cleanup.data;
 
-import java.io.PrintWriter;
-import java.util.List;
+import com.google.common.base.Objects;
 
-import org.jclouds.cleanup.output.ClassDocPrinter;
+import java.util.Collection;
 
-import com.google.common.base.Joiner;
-import com.sun.javadoc.ClassDoc;
+/**
+ * Field
+ */
+public abstract class Field extends BaseObject {
+   private final String name;
 
-public class HashCodePrinter extends ClassDocPrinter {
+   public Field(String name, String type, Collection<String> annotations, Collection<String> javadocComment) {
+      super(type, annotations, javadocComment);
+      this.name = name;
+   }
 
-   @Override
-   public void write(ClassDoc classDoc, PrintWriter out) {
-      boolean callSuperDot = extendsSomething(classDoc);
+   public String getName() {
+      return name;
+   }
 
-      List<String> fieldNames = getFieldNames(classDoc);
+   public boolean isSet() {
+      String simpleType = type.replaceAll("<.*>", "").replaceAll(".*\\.", "");
+      return Objects.equal(simpleType, "Set");
+   }
 
-      if (fieldNames.isEmpty()) return;
-      out.println("@Override");
-      out.println("public int hashCode() {");
-
-      out.print("return Objects.hashCode(");
-      if (callSuperDot) out.print("super.hashCode(), ");
-      out.print(Joiner.on(", ").join(fieldNames));
-      out.println(");");
-      out.println("}");
-      out.println();
+   public boolean isList() {
+      String simpleType = type.replaceAll("<.*>", "").replaceAll(".*\\.", "");
+      return Objects.equal(simpleType, "List");
    }
 
 }

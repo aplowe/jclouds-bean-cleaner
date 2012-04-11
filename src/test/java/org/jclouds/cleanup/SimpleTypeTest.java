@@ -12,7 +12,7 @@ public class SimpleTypeTest extends AbstractTest {
 
    @Test
    public void testSimpleTypes() throws Exception {
-      File packageDir = generateBeans("/org/jclouds/cleanup/simpletest");
+      File packageDir = generateBeans("/org/jclouds/cleanup/simpletest", "Standard");
       assertEquals(packageDir.listFiles().length, 4);
    }
 

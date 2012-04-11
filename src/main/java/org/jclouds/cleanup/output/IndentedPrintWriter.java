@@ -18,14 +18,15 @@
  */
 package org.jclouds.cleanup.output;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-
 import com.google.common.base.Strings;
 
+import java.io.*;
+
+/**
+ * Attempts to indent java source code
+ * TODO adjust to cope better with badly formatted input
+ * (note: we're only using this for finding inner class boundaries so it'll do for now!)
+ */
 public class IndentedPrintWriter extends PrintWriter {
 
    public final String indentString = "   ";

@@ -9,11 +9,11 @@ import com.google.common.base.Splitter;
 
 /**
  */
-public abstract class AbstractTest {
+public abstract class AbstractTest {   
    /**
     * Hiding away some hookiness that locates target based upon class.getResource().getFile()!
     */
-   protected File generateBeans(String packagePath) throws Exception {
+   protected File generateBeans(String packagePath, String format) throws Exception {
       // Our classes are in the classpath!
       File f = new File(AbstractTest.class.getResource(packagePath).getFile());
       File classesDir = f.getParentFile();
@@ -35,7 +35,7 @@ public abstract class AbstractTest {
          assertEquals(simpleTestPackage.listFiles().length, 0);
       }
 
-      DomainObjectDocletCleaner.main(new String[]{new File(targetDir.getParent(), "src/test/java" + packagePath).getAbsolutePath(), classesDir.getAbsolutePath(), "-d", generatedDir.getAbsolutePath(), "-jaxb"});
+      DomainObjectDocletCleaner.main(new String[]{new File(targetDir.getParent(), "src/test/java" + packagePath).getAbsolutePath(), classesDir.getAbsolutePath(), "-d", generatedDir.getAbsolutePath(), "-format", format});
 
       return simpleTestPackage;
    }

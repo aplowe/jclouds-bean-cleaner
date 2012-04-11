@@ -26,23 +26,23 @@ import java.io.InputStreamReader;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class StreamGobbler extends Thread {
-    InputStream is;
-    String type;
+   InputStream is;
+   String type;
 
-    public StreamGobbler(InputStream is, String type) {
-        this.is = checkNotNull(is, "is");
-        this.type = checkNotNull(type, "type");
-    }
+   public StreamGobbler(InputStream is, String type) {
+      this.is = checkNotNull(is, "is");
+      this.type = checkNotNull(type, "type");
+   }
 
-    public void run() {
-        try {
-            InputStreamReader isr = new InputStreamReader(is);
-            BufferedReader br = new BufferedReader(isr);
-            String line = null;
-            while ((line = br.readLine()) != null)
-                System.out.println(type + ">" + line);
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
-    }
+   public void run() {
+      try {
+         InputStreamReader isr = new InputStreamReader(is);
+         BufferedReader br = new BufferedReader(isr);
+         String line = null;
+         while ((line = br.readLine()) != null)
+            System.out.println(type + ">" + line);
+      } catch (IOException ioe) {
+         ioe.printStackTrace();
+      }
+   }
 }

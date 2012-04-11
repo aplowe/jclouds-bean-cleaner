@@ -16,3 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.jclouds.cleanup.data;
+
+import java.util.Collection;
+
+/**
+ * Static field
+ */
+public class ClassField extends Field {
+
+   public ClassField(String name, String type, Collection<String> annotations, Collection<String> javadocComment) {
+      super(name, type, annotations, javadocComment);
+   }
+}
