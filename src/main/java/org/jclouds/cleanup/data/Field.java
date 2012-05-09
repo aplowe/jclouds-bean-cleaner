@@ -21,6 +21,8 @@ package org.jclouds.cleanup.data;
 import com.google.common.base.Objects;
 
 import java.util.Collection;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Field
@@ -38,13 +40,27 @@ public abstract class Field extends BaseObject {
    }
 
    public boolean isSet() {
-      String simpleType = type.replaceAll("<.*>", "").replaceAll(".*\\.", "");
-      return Objects.equal(simpleType, "Set");
+      return Objects.equal(simpleType(), "Set");
    }
 
    public boolean isList() {
-      String simpleType = type.replaceAll("<.*>", "").replaceAll(".*\\.", "");
-      return Objects.equal(simpleType, "List");
+      return Objects.equal(simpleType(), "List");
    }
 
+   public boolean isMap() {
+      return Objects.equal(simpleType(), "Map");
+   }
+
+   public String simpleType() {
+      return type.replaceAll("^java\\.util\\.", "").replaceAll("<.*>", "");
+   }
+   
+   public String getParameterType() {
+      Matcher matchy = Pattern.compile("[^<]*<(.*)>").matcher(type);
+      if (matchy.matches()) {
+         return matchy.group(1);
+      } else {
+         return "NOIDEAWHATTHISISABOUT";
+      }
+   }
 }

@@ -1,32 +1,34 @@
 package org.jclouds.cleanup.simpletest;
 
+import org.jclouds.javax.annotation.Nullable;
+
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Class comment of SecondChild
- * => Expect both generated getters to be commented.
+ * => Expect both getAttX() and getAttY() to be commented.
  */
 public class SecondChild extends Parent<SecondChild> {
 
-    @XmlAttribute
-    public String attX;
+    public Set<String> attX;
 
     /**
      * @return the Y!
      */
-    @XmlElement
-    private String elemY;
+    private Map<String, Parent> elemY;
 
     /**
      * @return the X!
      */
-    public String getAttX() {
+    public Set<String> getAttX() {
         return attX;
     }
 
-    public String getAttY() {
-        return attX;
+    public Map<String, Parent> getAttY() {
+        return elemY;
     }
 
 }

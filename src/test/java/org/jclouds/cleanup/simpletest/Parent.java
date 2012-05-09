@@ -1,5 +1,7 @@
 package org.jclouds.cleanup.simpletest;
 
+import org.jclouds.javax.annotation.Nullable;
+
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
@@ -9,14 +11,11 @@ import javax.xml.bind.annotation.XmlElement;
  * Long
  */
 public class Parent<T extends Parent<T>> extends GrandParent<T> {
+   @Nullable
+   public String parentAtt;
 
-    @XmlAttribute
-    public String parentAtt;
-    
-    @XmlElement
-    private String parentElem;
+   @Nullable
+   private String parentElem;
 
-    @XmlElement(required = true)
-    private String parentReqElem;
-
+   private String parentReqElem;
 }

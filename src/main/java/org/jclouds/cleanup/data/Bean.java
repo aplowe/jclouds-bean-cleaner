@@ -39,11 +39,9 @@ public class Bean extends BaseObject {
                "import static com.google.common.base.Preconditions.checkNotNull;",
                "import java.util.Collections;",
                "import org.jclouds.javax.annotation.Nullable;",
-               "import com.google.common.collect.ImmutableCollection;",
                "import com.google.common.collect.ImmutableList;",
+               "import com.google.common.collect.ImmutableMap;",
                "import com.google.common.collect.ImmutableSet;",
-               "import com.google.common.collect.Lists;",
-               "import com.google.common.collect.Sets;",
                "import com.google.common.base.Objects;",
                "import com.google.common.base.Objects.ToStringHelper;"
          );

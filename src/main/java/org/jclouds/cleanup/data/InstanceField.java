@@ -9,11 +9,11 @@ import java.util.Collection;
  */
 public class InstanceField extends Field {
    public static final String[] booleanAccesorNames = {"is", "may", "can", "should", "cannot", "not"};
-   private boolean notNullable;
+   private boolean nullable;
 
-   public InstanceField(String name, String type, boolean notNull, Collection<String> annotations, Collection<String> javadocComment) {
+   public InstanceField(String name, String type, boolean nullable, Collection<String> annotations, Collection<String> javadocComment) {
       super(name, type, annotations, javadocComment);
-      this.notNullable = notNull;
+      this.nullable = nullable;
    }
 
    // TODO this should probably be determined beforehand and passed to constructor!
@@ -36,6 +36,6 @@ public class InstanceField extends Field {
    }
 
    public boolean isNullable() {
-      return !notNullable && !annotations.contains("@Nullable");
+      return nullable;
    }
 }

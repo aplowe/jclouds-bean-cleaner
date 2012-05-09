@@ -54,17 +54,23 @@ public class ClassDocParser {
       return result;
    }
 
-   protected boolean annotatatedAsNotNull(ProgramElementDoc element) {
+   protected boolean annotatatedAsNullable(ProgramElementDoc element) {
+      boolean shouldBeRequired = false;
       for (AnnotationDesc atree : element.annotations()) {
+         if (Objects.equal("Nullable", atree.annotationType().simpleTypeName())) {
+            return true;
+         }
          if (ImmutableSet.of("XmlElement", "XmlAttribute", "XmlElementRef").contains(atree.annotationType().simpleTypeName())) {
+            shouldBeRequired = true;
             for (AnnotationDesc.ElementValuePair evp : atree.elementValues()) {
                if (Objects.equal("required", evp.element().name()) && Objects.equal(Boolean.TRUE, evp.value().value())) {
-                  return true;
+                  return false;
                }
             }
          }
       }
-      return false;
+      // Note: if we've determined that it should be marked as required we return true
+      return shouldBeRequired;
    }
 
    private Collection<String> extractComment(ProgramElementDoc element) {
@@ -117,37 +123,46 @@ public class ClassDocParser {
       return result;
    }
 
-
    protected String properTypeName(FieldDoc field, Collection<String> imports) {
-      String fieldType = field.type().simpleTypeName();
-      if (field.type().asParameterizedType() != null) {
+      return fixupTypeName(field.type(), field.containingPackage(), imports);
+   }
+
+   protected String fixupTypeName(Type type, PackageDoc currentPackage, Collection<String> imports) {
+      String fieldType = removeUnnecessaryPackages(type, currentPackage, imports);
+      if (type.asParameterizedType() != null) {
          fieldType += "<";
-         for (Type type : field.type().asParameterizedType().typeArguments()) {
-            fieldType += (type.asClassDoc().containingPackage().equals(field.containingPackage()) ? type.simpleTypeName() : type.qualifiedTypeName()) + ", ";
+         for (Type paramType : type.asParameterizedType().typeArguments()) {
+            fieldType += fixupTypeName(paramType, currentPackage, imports) + ", ";
          }
          fieldType = fieldType.substring(0, fieldType.length() - 2);
          fieldType += ">";
       }
-
-      if (field.type().isPrimitive() || field.type().asClassDoc().containingPackage().name().equals("java.lang")) {
-         return fieldType;
-      } else if (field.type().asClassDoc().containingPackage().equals(field.containingClass().containingPackage()) ||
-            imports.contains("import " + field.type().qualifiedTypeName() + ";") ||
-            imports.contains("import " + field.type().asClassDoc().containingPackage().name() + "*" + ";")) {
-         if (field.type().asClassDoc().containingClass() != null) {
-            return field.type().asClassDoc().containingClass().simpleTypeName() + "." + fieldType;
-         }
-         return fieldType;
-      } else {
-         return field.type().asClassDoc().containingPackage() + "." + fieldType;
-      }
+      return fieldType;
    }
 
+   protected String removeUnnecessaryPackages(Type type, PackageDoc currentPackage, Collection<String> imports) {
+      String fieldType = type.simpleTypeName();
+      if (type.isPrimitive() || type.asClassDoc().containingPackage().name().equals("java.lang")) {
+         ;
+      } else if (type.asClassDoc().containingPackage().equals(currentPackage) ||
+            imports.contains("import " + type.qualifiedTypeName() + ";") ||
+            imports.contains("import " + type.asClassDoc().containingPackage().name() + "*" + ";")) {
+         if (type.asClassDoc().containingClass() != null) {
+            fieldType = type.asClassDoc().containingClass().simpleTypeName() + "." + fieldType;
+         }
+      } else {
+         fieldType = type.asClassDoc().containingPackage() + "." + fieldType;
+      }
+      return fieldType;
+   }
+   
    public Bean parseBean(ClassDoc element) {
       String superClass = null;
       if (element.superclassType() != null && !Objects.equal(element.superclassType().qualifiedTypeName(), "java.lang.Object")) {
          superClass = element.superclassType().simpleTypeName();
       }
+      
+      
       Bean bean = new Bean(element.containingPackage().toString(), element.isAbstract(), element.simpleTypeName(), superClass, getAnnotations(element), extractComment("Class " + element.name(), null, element));
 
       // Process imports
@@ -188,7 +203,7 @@ public class ClassDocParser {
             bean.addClassField(new ClassField(field.name(), properTypeName(field, bean.rawImports()), getAnnotations(field), extractComment(null, ImmutableMap.<String, String>of(), field)));
          } else {
             // Note we need to pick up any stray comments or annotations on accessors
-            InstanceField instanceField = new InstanceField(field.name(), properTypeName(field, bean.rawImports()), annotatatedAsNotNull(field), getAnnotations(field), extractComment(null, ImmutableMap.<String, String>of(), field));
+            InstanceField instanceField = new InstanceField(field.name(), properTypeName(field, bean.rawImports()), annotatatedAsNullable(field), getAnnotations(field), extractComment(null, ImmutableMap.<String, String>of(), field));
             for (MethodDoc method : element.methods()) {
                if (Objects.equal(method.name(), instanceField.getAccessorName()) ||
                      Objects.equal(method.name(), instanceField.getName())) {

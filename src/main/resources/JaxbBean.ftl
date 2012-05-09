@@ -68,12 +68,14 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
       protected abstract T self();
 
    [/#if]
-   [#-- Print fields --]
+   [#-- Print builder fields --]
    [#list instanceFields![] as field]
       [#if field.set]
-      private ${field.type} ${field.name} = Sets.newLinkedHashSet();
+      private ${field.type} ${field.name} = ImmutableSet.of();
       [#elseif field.list]
-      private ${field.type} $field.name = Lists.newArrayList();
+      private ${field.type} ${field.name} = ImmutableList.of();
+      [#elseif field.map]
+      private ${field.type} ${field.name} = ImmutableMap.of();
       [#else]
       private ${field.type} ${field.name};
       [/#if]
@@ -81,12 +83,26 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    
    [#-- Print setters --]
    [#list instanceFields![] as field]
+      /** 
+       * @see ${type}#${field.accessorName}()
+       */
       public T ${field.name}(${field.type} ${field.name}) {
          this.${field.name} = ${field.name};
          return self();
       }
 
-   [/#list]
+      [#if field.set]
+      public T ${field.name}(${field.parameterType}... in) {
+         return ${field.name}(ImmutableSet.copyOf(in));
+      }
+
+      [#elseif field.list]
+      public T ${field.name}(${field.parameterType}... in) {
+         return ${field.name}(ImmutableList.copyOf(in));
+      }
+
+      [/#if]
+[/#list]
       public ${type} build() {
          return new ${type}(this);
       }
@@ -97,7 +113,6 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
             .${field.name}(in.${field.accessorName}())
 [/#list]            ;
       }
-
    }
 
    [#-- Concrete builder --]
@@ -122,7 +137,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [/#if]
 [/#list]
 
-   [#-- Print constructor --]
+   [#-- Print constructors --]
    protected ${type}(Builder<?> builder) {
    [#if subclass]
       super(builder);
@@ -132,6 +147,8 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
       this.${field.name} = ImmutableSet.copyOf(checkNotNull(builder.${field.name}, "${field.name}"));      
       [#elseif field.list]
       this.${field.name} = ImmutableList.copyOf(checkNotNull(builder.${field.name}, "${field.name}"));     
+      [#elseif field.map]
+      this.${field.name} = ImmutableMap.copyOf(checkNotNull(builder.${field.name}, "${field.name}"));     
       [#else]
       this.${field.name} =[#if field.nullable] builder.${field.name}; [#else] checkNotNull(builder.${field.name}, "${field.name}");[/#if]
       [/#if]
@@ -157,6 +174,8 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
       return Collections.unmodifiableSet(this.${field.name});
       [#elseif field.list]
       return Collections.unmodifiableList(this.${field.name});
+      [#elseif field.map]
+      return Collections.unmodifiableMap(this.${field.name});
       [#else]
       return this.${field.name};
       [/#if]
@@ -174,7 +193,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
       if (this == obj) return true;
       if (obj == null || getClass() != obj.getClass()) return false;
       ${type} that = ${type}.class.cast(obj);
-      return Objects.equal(this.${instanceFields[0].name}, that.${instanceFields[0].name})
+      return [#if subclass]super.equals(that) && [/#if]Objects.equal(this.${instanceFields[0].name}, that.${instanceFields[0].name})
       [#if instanceFields?size > 1]
       [#list instanceFields[1..] as field]
          && Objects.equal(this.${field.name}, that.${field.name})

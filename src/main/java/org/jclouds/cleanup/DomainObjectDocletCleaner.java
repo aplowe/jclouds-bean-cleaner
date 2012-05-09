@@ -32,7 +32,7 @@ import java.util.List;
  */
 public class DomainObjectDocletCleaner extends Doclet {
    private static String outputPath = "target/generated-sources/cleanbeans";
-   private static String format = "Standard";
+   private static String format = "Gson";
    private static Configuration cfg = new Configuration();
 
    /**

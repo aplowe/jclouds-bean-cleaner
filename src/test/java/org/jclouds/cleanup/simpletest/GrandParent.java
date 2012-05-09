@@ -1,5 +1,8 @@
 package org.jclouds.cleanup.simpletest;
 
+import com.google.gson.annotations.SerializedName;
+import org.jclouds.javax.annotation.Nullable;
+
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 
@@ -11,21 +14,21 @@ import javax.xml.bind.annotation.XmlElement;
 public class GrandParent<T extends GrandParent<T>> {
 
     /** @return name is required */
-    @XmlAttribute(required=true)
+    @Nullable
     protected String name;
 
     /** @return attribute is not null */
-    @XmlAttribute(required=true)
     protected String id;
 
     /** @return this is nullable */
-    @XmlAttribute
+    @Nullable
     protected String description;
     
-    @XmlElement(name="Freddy", required=true)
+    @SerializedName("Freddy")
     protected String freddy;
 
-    @XmlElement(name="Brian")
+    @SerializedName("Brian")
+    @Nullable
     protected String brian;
 
     /** This element is NOT required
