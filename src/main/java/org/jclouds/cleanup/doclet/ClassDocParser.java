@@ -77,8 +77,8 @@ public class ClassDocParser {
       return extractComment(null, null, element);
    }
 
-   private Collection<String> extractComment(String
-                                                   defaultCommentText, Map<String, String> defaultTags, ProgramElementDoc... elements) {
+   private Collection<String> extractComment(String defaultCommentText,
+                                             Multimap<String, String> defaultTags, ProgramElementDoc... elements) {
       String commentText = null;
       for (ProgramElementDoc element : elements) {
          if (element != null && element.commentText() != null && !element.commentText().trim().isEmpty()) {
@@ -91,7 +91,7 @@ public class ClassDocParser {
          commentText = defaultCommentText;
       }
 
-      Map<String, String> tagsToOutput = Maps.newHashMap();
+      Multimap<String, String> tagsToOutput = LinkedListMultimap.create();
       if (defaultTags != null) tagsToOutput.putAll(defaultTags);
 
       // TODO multimap?
@@ -116,7 +116,7 @@ public class ClassDocParser {
          }
       }
 
-      for (Map.Entry<String, String> tag : tagsToOutput.entrySet()) {
+      for (Map.Entry<String, String> tag : tagsToOutput.entries()) {
          result.add(tag.getKey() + " " + tag.getValue());
       }
 
@@ -200,10 +200,10 @@ public class ClassDocParser {
       // Process fields
       for (FieldDoc field : element.fields()) {
          if (field.isStatic()) {
-            bean.addClassField(new ClassField(field.name(), properTypeName(field, bean.rawImports()), getAnnotations(field), extractComment(null, ImmutableMap.<String, String>of(), field)));
+            bean.addClassField(new ClassField(field.name(), properTypeName(field, bean.rawImports()), getAnnotations(field), extractComment(null, ImmutableMultimap.<String, String>of(), field)));
          } else {
             // Note we need to pick up any stray comments or annotations on accessors
-            InstanceField instanceField = new InstanceField(field.name(), properTypeName(field, bean.rawImports()), annotatatedAsNullable(field), getAnnotations(field), extractComment(null, ImmutableMap.<String, String>of(), field));
+            InstanceField instanceField = new InstanceField(field.name(), properTypeName(field, bean.rawImports()), annotatatedAsNullable(field), getAnnotations(field), extractComment(null, ImmutableMultimap.<String, String>of(), field));
             for (MethodDoc method : element.methods()) {
                if (Objects.equal(method.name(), instanceField.getAccessorName()) ||
                      Objects.equal(method.name(), instanceField.getName())) {
