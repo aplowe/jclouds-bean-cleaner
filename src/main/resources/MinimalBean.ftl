@@ -1,5 +1,5 @@
 [#ftl]
-/**
+/*
  * Licensed to jclouds, Inc. (jclouds) under one or more
  * contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,7 +30,7 @@ ${import}
 [#list annotations as anno]
 ${anno}
 [/#list]
-public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superClass} [/#if]{
+public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superClassName} [/#if]{
 
 [#list innerClasses![] as inc] 
    /**

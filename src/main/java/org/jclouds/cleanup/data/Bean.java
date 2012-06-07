@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to jclouds, Inc. (jclouds) under one or more
  * contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -18,6 +18,7 @@
  */
 package org.jclouds.cleanup.data;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
@@ -38,9 +39,12 @@ public class Bean extends BaseObject {
          ImmutableSet.of(
                "import static com.google.common.base.Preconditions.checkNotNull;",
                "import java.util.Collections;",
+               "import javax.inject.Inject;",
+               "import javax.inject.Named;",
                "import org.jclouds.javax.annotation.Nullable;",
                "import com.google.common.collect.ImmutableList;",
                "import com.google.common.collect.ImmutableMap;",
+               "import com.google.common.collect.ImmutableMultimap;",
                "import com.google.common.collect.ImmutableSet;",
                "import com.google.common.base.Objects;",
                "import com.google.common.base.Objects.ToStringHelper;"
@@ -50,14 +54,19 @@ public class Bean extends BaseObject {
    private final List<ClassField> staticFields = Lists.newArrayList();
    private final List<InnerClass> innerClasses = Lists.newArrayList();
    private final String packageName;
-   private final String superClass;
+   private Bean superClass;
    private final boolean isAbstract;
+   private final Format format;
 
-   public Bean(String packageName, boolean isAbstract, String type, String superClass, Collection<String> annotations, Collection<String> javadocComment) {
+   public Bean(String packageName, boolean isAbstract, Format format, String type, Collection<String> annotations, Collection<String> javadocComment) {
       super(type, annotations, javadocComment);
       this.packageName = packageName;
-      this.superClass = superClass;
       this.isAbstract = isAbstract;
+      this.format = format;
+   }
+
+   public void setSuperClass(Bean superClass) {
+      this.superClass = superClass;
    }
 
    public void addInstanceField(InstanceField field) {
@@ -103,8 +112,20 @@ public class Bean extends BaseObject {
       return packageName;
    }
 
+   /**
+    * @return the fields of this class (excluding those inherited)
+    */
    public List<InstanceField> getInstanceFields() {
       return instanceFields;
+   }
+
+   public InstanceField getInstanceField(String name) {
+      for (InstanceField field : getInstanceFields()) {
+         if (Objects.equal(name, field.getName())) {
+            return field;
+         }
+      }
+      return null;
    }
 
    public List<ClassField> getStaticFields() {
@@ -115,16 +136,53 @@ public class Bean extends BaseObject {
       return innerClasses;
    }
 
-   public String getSuperClass() {
+   public Bean getSuperClass() {
       return superClass;
+   }
+
+   public String getSuperClassName() {
+      return superClass == null ? null : superClass.getType();
    }
 
    public boolean isAbstract() {
       return isAbstract;
    }
 
-   // Convenience!
+   // Convenience methods!
+   public boolean isJaxb() {
+      return format == Format.JAXB || format == Format.MIXED;
+   }
+   
+   public boolean isGson() {
+      return format == Format.GSON || format == Format.MIXED;
+   }   
+   
    public boolean isSubclass() {
       return superClass != null;
+   }
+
+   /**
+    * @return all the fields of this class, in descending order (super-first)
+    */
+   public List<InstanceField> getAllFields() {
+      List<InstanceField> result = Lists.newArrayList();
+      result.addAll(getSuperFields());
+      result.addAll(getInstanceFields());
+      return result;
+   }
+
+   /**
+    * @return the fields of this class inherited from superclasses, in descending order (super-first)
+    */
+   public List<InstanceField> getSuperFields() {
+      List<InstanceField> result = Lists.newArrayList();
+      List<Bean> classes = Lists.newArrayList();
+      for (Bean current = getSuperClass(); current != null; current = current.getSuperClass()) {
+         classes.add(current);
+      }
+      for (Bean current : Lists.reverse(classes)) {
+         result.addAll(current.getInstanceFields());
+      }
+      return result;
    }
 }

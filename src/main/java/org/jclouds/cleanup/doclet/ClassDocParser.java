@@ -25,10 +25,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.*;
 import com.google.common.io.NullOutputStream;
 import com.sun.javadoc.*;
-import org.jclouds.cleanup.data.Bean;
-import org.jclouds.cleanup.data.ClassField;
-import org.jclouds.cleanup.data.InnerClass;
-import org.jclouds.cleanup.data.InstanceField;
+import org.jclouds.cleanup.data.*;
 import org.jclouds.cleanup.output.IndentedPrintWriter;
 import org.jclouds.util.Strings2;
 
@@ -42,14 +39,32 @@ import java.util.Map;
  *
  */
 public class ClassDocParser {
-   protected Collection<String> getAnnotations(ProgramElementDoc element) {
+
+   /**
+    * Patterns applied to annotations to determine serialized names
+    * (always try all of them in case we're moving from one serialisation style or format to another)
+    */
+   private Map<String, String> serializedNameGrabbers = ImmutableMap.of(
+         "Named", "value",
+         "SerializedName", "value",
+         "JsonProperty", "value",
+         "XmlElement", "name",
+         "XmlAttribute", "name");
+
+   private List<String> annotationsToKill = ImmutableList.of("SerializedName", "Named");
+
+   private Collection<String> getAnnotations(ProgramElementDoc element) {
       List<String> result = Lists.newArrayList();
       for (AnnotationDesc atree : element.annotations()) {
          String tmp = "@" + atree.annotationType().simpleTypeName();
-         if (atree.elementValues().length > 0) {
-            tmp += "(" + Joiner.on(", ").join(atree.elementValues()) + ")";
+         if (!annotationsToKill.contains(atree.annotationType().simpleTypeName())) {
+            if (atree.elementValues().length == 1 && Objects.equal(atree.elementValues()[0].element().name(), "value")) {
+               tmp += "(" + atree.elementValues()[0].value() + ")";
+            } else if (atree.elementValues().length > 0) {
+               tmp += "(" + Joiner.on(", ").join(atree.elementValues()) + ")";
+            }
+            result.add(tmp);
          }
-         result.add(tmp);
       }
       return result;
    }
@@ -129,7 +144,7 @@ public class ClassDocParser {
 
    protected String fixupTypeName(Type type, PackageDoc currentPackage, Collection<String> imports) {
       String fieldType = removeUnnecessaryPackages(type, currentPackage, imports);
-      if (type.asParameterizedType() != null) {
+      if (type.asParameterizedType() != null && type.asParameterizedType().typeArguments().length > 0) {
          fieldType += "<";
          for (Type paramType : type.asParameterizedType().typeArguments()) {
             fieldType += fixupTypeName(paramType, currentPackage, imports) + ", ";
@@ -155,15 +170,14 @@ public class ClassDocParser {
       }
       return fieldType;
    }
-   
-   public Bean parseBean(ClassDoc element) {
+
+   public BeanAndSuperClassName parseBean(ClassDoc element, Format format) {
       String superClass = null;
       if (element.superclassType() != null && !Objects.equal(element.superclassType().qualifiedTypeName(), "java.lang.Object")) {
          superClass = element.superclassType().simpleTypeName();
       }
-      
-      
-      Bean bean = new Bean(element.containingPackage().toString(), element.isAbstract(), element.simpleTypeName(), superClass, getAnnotations(element), extractComment("Class " + element.name(), null, element));
+
+      Bean bean = new Bean(element.containingPackage().toString(), element.isAbstract(), format, element.simpleTypeName(), getAnnotations(element), extractComment("Class " + element.name(), null, element));
 
       // Process imports
       List<String> lines;
@@ -204,18 +218,49 @@ public class ClassDocParser {
          } else {
             // Note we need to pick up any stray comments or annotations on accessors
             InstanceField instanceField = new InstanceField(field.name(), properTypeName(field, bean.rawImports()), annotatatedAsNullable(field), getAnnotations(field), extractComment(null, ImmutableMultimap.<String, String>of(), field));
+            String serializedName = getSerializedName(field.annotations());
             for (MethodDoc method : element.methods()) {
                if (Objects.equal(method.name(), instanceField.getAccessorName()) ||
                      Objects.equal(method.name(), instanceField.getName())) {
                   instanceField.addAnnotations(getAnnotations(method));
                   instanceField.adjustJavaDoc(extractComment(method));
+                  if (serializedName == null) {
+                     serializedName = getSerializedName(method.annotations());
+                  }
                }
             }
+            instanceField.setSerializedName(serializedName);
             bean.addInstanceField(instanceField);
          }
       }
 
-      return bean;
+      // Process @Inject constructor (if any)
+      for (ConstructorDoc constructor : element.constructors()) {
+         if (getAnnotations(constructor).contains("@Inject")) {
+            for (Parameter parameter : constructor.parameters()) {
+               // try to pick-up the associations with fields
+               InstanceField field = bean.getInstanceField(parameter.name());
+               if (field != null && field.getSerializedName() == null) {
+                  field.setSerializedName(getSerializedName(parameter.annotations()));
+               }
+            }
+         }
+      }
+
+      return new BeanAndSuperClassName(bean, superClass);
+   }
+
+   private String getSerializedName(AnnotationDesc... annotationDescs) {
+      for (AnnotationDesc anno : annotationDescs) {
+         if (serializedNameGrabbers.containsKey(anno.annotationType().simpleTypeName())) {
+            for (AnnotationDesc.ElementValuePair pair : anno.elementValues()) {
+               if (Objects.equal(serializedNameGrabbers.get(anno.annotationType().simpleTypeName()), pair.element().name())) {
+                  return (String) pair.value().value();
+               }
+            }
+         }
+      }
+      return null;
    }
 
 }

@@ -18,26 +18,20 @@
  */
 package org.jclouds.cleanup.data;
 
-import java.util.Collection;
-
-/**
- * Base
- */
-public class InnerClass extends BaseObject {
-   private final Collection<String> content;
-   private final String modifiers;
-
-   public InnerClass(String modifiers, String type, Collection<String> annotations, Collection<String> javadocComment, Collection<String> content) {
-      super(type, annotations, javadocComment);
-      this.modifiers = modifiers;
-      this.content = content;
+public class BeanAndSuperClassName {
+   private Bean bean;
+   private String superClassName;
+   
+   public BeanAndSuperClassName(Bean bean, String superClassName) {
+      this.bean = bean;
+      this.superClassName = superClassName;
    }
 
-   public Collection<String> getContents() {
-      return content;
+   public Bean getBean() {
+      return bean;
    }
 
-   public String getModifiers() {
-      return modifiers;
+   public String getSuperClassName() {
+      return superClassName;
    }
 }

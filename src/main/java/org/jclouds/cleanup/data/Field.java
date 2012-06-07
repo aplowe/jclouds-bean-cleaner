@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to jclouds, Inc. (jclouds) under one or more
  * contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -51,12 +51,20 @@ public abstract class Field extends BaseObject {
       return Objects.equal(simpleType(), "Map");
    }
 
+   public boolean isOptional() {
+      return Objects.equal(simpleType(), "Optional");
+   }
+   
+   public boolean isMultimap() {
+      return Objects.equal(simpleType(), "Multimap");
+   }
+
    public String simpleType() {
       return type.replaceAll("^java\\.util\\.", "").replaceAll("<.*>", "");
    }
    
    public String getParameterType() {
-      Matcher matchy = Pattern.compile("[^<]*<(.*)>").matcher(type);
+      Matcher matchy = Pattern.compile("[^<]*<(.*)>\\s*$").matcher(type);
       if (matchy.matches()) {
          return matchy.group(1);
       } else {

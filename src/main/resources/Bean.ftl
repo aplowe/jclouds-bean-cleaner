@@ -1,5 +1,6 @@
 [#ftl]
-/**
+[#macro namedanno field][#if field.nullable]@Nullable [/#if][#if gson && (field.serializedName!)?length > 0]@Named("${field.serializedName}") [/#if][/#macro]
+/*
  * Licensed to jclouds, Inc. (jclouds) under one or more
  * contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -30,7 +31,7 @@ ${import}
 [#list annotations as anno]
 ${anno}
 [/#list]
-public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superClass} [/#if]{
+public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superClassName} [/#if]{
 
 [#list innerClasses![] as inc] 
    /**
@@ -63,7 +64,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    }
 
    [/#if]   
-   public static abstract class Builder<T extends Builder<T>> [#if subclass]extends ${superClass}.Builder<T> [/#if] {
+   public static abstract class Builder<T extends Builder<T>> [#if subclass]extends ${superClassName}.Builder<T> [/#if] {
    [#if ! subclass]
       protected abstract T self();
 
@@ -71,13 +72,15 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [#-- Print builder fields --]
    [#list instanceFields![] as field]
       [#if field.set]
-      private ${field.type} ${field.name} = ImmutableSet.of();
+      protected ${field.type} ${field.name} = ImmutableSet.of();
       [#elseif field.list]
-      private ${field.type} ${field.name} = ImmutableList.of();
+      protected ${field.type} ${field.name} = ImmutableList.of();
       [#elseif field.map]
-      private ${field.type} ${field.name} = ImmutableMap.of();
+      protected ${field.type} ${field.name} = ImmutableMap.of();
+      [#elseif field.multimap]
+      protected ${field.type} ${field.name} = ImmutableMultimap.of();
       [#else]
-      private ${field.type} ${field.name};
+      protected ${field.type} ${field.name};
       [/#if]
    [/#list]
    
@@ -87,7 +90,17 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
        * @see ${type}#${field.accessorName}()
        */
       public T ${field.name}(${field.type} ${field.name}) {
-         this.${field.name} = ${field.name};
+         [#if field.set]
+         this.${field.name} = ImmutableSet.copyOf(checkNotNull(${field.name}, "${field.name}"));      
+         [#elseif field.list]
+         this.${field.name} = ImmutableList.copyOf(checkNotNull(${field.name}, "${field.name}"));     
+         [#elseif field.map]
+         this.${field.name} = ImmutableMap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
+         [#elseif field.multimap]
+         this.${field.name} = ImmutableMultimap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
+         [#else]
+         this.${field.name} =[#if field.nullable] ${field.name}; [#else] checkNotNull(${field.name}, "${field.name}");[/#if]
+         [/#if]
          return self();
       }
 
@@ -104,11 +117,11 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
       [/#if]
 [/#list]
       public ${type} build() {
-         return new ${type}(this);
+         return new ${type}(${allFields[0].name}[#if allFields?size > 1][#list allFields[1..] as field], ${field.name}[/#list][/#if]);
       }
       
       public T from${type}(${type} in) {
-         return [#if subclass]super.from${superClass}(in)[#else]this[/#if]
+         return [#if subclass]super.from${superClassName}(in)[#else]this[/#if]
 [#list instanceFields![] as field]
             .${field.name}(in.${field.accessorName}())
 [/#list]            ;
@@ -127,45 +140,55 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [/#if]
 [#-- Print fields --]
 [#list instanceFields![] as field]
+[#if jaxb]
    [#list field.annotations![] as anno]
    ${anno}
    [/#list]
+   [#if field.set]
+   private ${field.type} ${field.name} = Sets.newLinkedHashSet(); // maintaining order
+   [#else]
+   private ${field.type} ${field.name};
+   [/#if]
+   [#else]
    private final ${field.type} ${field.name};
+   [/#if]
 [/#list]
+   [#-- Print constructors --]   
 
-   [#-- Print constructors --]
-   protected ${type}(Builder<?> builder) {
+   [#if gson]
+   @Inject
+   [#else]
+   [/#if]
+   protected ${type}([@namedanno field=allFields[0] /]${allFields[0].type} ${allFields[0].name}[#if allFields?size > 1][#list allFields[1..] as field], [@namedanno field=field /]${field.type} ${field.name}[/#list][/#if]) {
    [#if subclass]
-      super(builder);
+      super(${superFields[0].name}[#if allFields?size > 1][#list allFields[1..] as field], ${field.name}[/#list][/#if]);
    [/#if]
    [#list instanceFields![] as field]
       [#if field.set]
-      this.${field.name} = ImmutableSet.copyOf(checkNotNull(builder.${field.name}, "${field.name}"));      
+      this.${field.name} = ImmutableSet.copyOf(checkNotNull(${field.name}, "${field.name}"));      
       [#elseif field.list]
-      this.${field.name} = ImmutableList.copyOf(checkNotNull(builder.${field.name}, "${field.name}"));     
+      this.${field.name} = ImmutableList.copyOf(checkNotNull(${field.name}, "${field.name}"));     
       [#elseif field.map]
-      this.${field.name} = ImmutableMap.copyOf(checkNotNull(builder.${field.name}, "${field.name}"));     
+      this.${field.name} = ImmutableMap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
+      [#elseif field.multimap]
+      this.${field.name} = ImmutableMultimap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
       [#else]
-      this.${field.name} =[#if field.nullable] builder.${field.name}; [#else] checkNotNull(builder.${field.name}, "${field.name}");[/#if]
+      this.${field.name} =[#if field.nullable] ${field.name}; [#else] checkNotNull(${field.name}, "${field.name}");[/#if]
       [/#if]
    [/#list]
    }
 
+   [#if jaxb]
    protected ${type}() {
-      // for GSON
-   [#list instanceFields![] as field]
-      [#if field.set]
-      this.${field.name} = ImmutableSet.of();      
-      [#elseif field.list]
-      this.${field.name} = ImmutableList.of());     
-      [#elseif field.map]
-      this.${field.name} = ImmutableMap.of());     
-      [#else]
-      this.${field.name} = null;
+      // for JAXB
+      [#list instanceFields![] as field]
+      [#if field.optional]
+      ${field.name} = Optional.absent(); // work-around
       [/#if]
-   [/#list]
+      [/#list]
    }
 
+   [/#if]
 [#-- Print accessors --]
 [#list instanceFields![] as field]
    /**
@@ -177,15 +200,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    @Nullable
    [/#if]
    public ${field.type} ${field.accessorName}() {
-      [#if field.set]
-      return Collections.unmodifiableSet(this.${field.name});
-      [#elseif field.list]
-      return Collections.unmodifiableList(this.${field.name});
-      [#elseif field.map]
-      return Collections.unmodifiableMap(this.${field.name});
-      [#else]
       return this.${field.name};
-      [/#if]
    }
 
 [/#list]
@@ -211,9 +226,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    
    protected ToStringHelper string() {
       return [#if subclass]super.string()[#else]Objects.toStringHelper("")[/#if]
-[#list instanceFields as field]
-         .add("${field.name}", ${field.name})
-[/#list]         ;
+            [#list instanceFields as field].add("${field.name}", ${field.name})[/#list];
    }
    
    [#if ! subclass]

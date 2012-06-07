@@ -10,7 +10,8 @@ import com.sun.javadoc.*;
 import freemarker.cache.ClassTemplateLoader;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
-import org.jclouds.cleanup.data.Bean;
+import org.jclouds.cleanup.data.BeanAndSuperClassName;
+import org.jclouds.cleanup.data.Format;
 import org.jclouds.cleanup.doclet.ClassDocParser;
 
 import java.io.File;
@@ -32,7 +33,7 @@ import java.util.List;
  */
 public class DomainObjectDocletCleaner extends Doclet {
    private static String outputPath = "target/generated-sources/cleanbeans";
-   private static String format = "Gson";
+   private static Format format = Format.GSON;
    private static Configuration cfg = new Configuration();
 
    /**
@@ -118,20 +119,36 @@ public class DomainObjectDocletCleaner extends Doclet {
          readOptions(root.options());
 
          ClassDocParser parser = new ClassDocParser();
-         Template template = cfg.getTemplate(format + "Bean.ftl");
-
+         Template template = cfg.getTemplate(format == Format.MINIMAL ? "MinimalBean.ftl" : "Bean.ftl");
+         List<BeanAndSuperClassName> beans = Lists.newArrayList();
+         
          for (ClassDoc clazz : root.classes()) {
-            Bean bean = parser.parseBean(clazz);
-
-            String className = clazz.simpleTypeName();
-            String packageName = clazz.containingPackage().name();
-            File outputFile = new File(outputPath, packageName.replaceAll("\\.", File.separator) + File.separator + className + ".java");
-            outputFile.getParentFile().mkdirs();
-            System.out.println("Processing " + clazz.name() + " writing to " + outputFile.getAbsolutePath());
-            if (clazz.containingClass() == null) {
-               template.process(bean, new FileWriter(outputFile));
+            if (clazz.containingClass() == null ) {
+               beans.add(parser.parseBean(clazz, format));
             }
          }
+
+         for (BeanAndSuperClassName bean : beans) {
+            if (bean.getSuperClassName() != null) {
+               for (BeanAndSuperClassName superBean : beans) {
+                  if (Objects.equal(superBean.getBean().getType(), bean.getSuperClassName())) {
+                     bean.getBean().setSuperClass(superBean.getBean());
+                  }
+               }
+            }
+         }
+
+         for (BeanAndSuperClassName bean : beans) {
+            if (bean.getBean().getAllFields().size() > 0) {
+               String className = bean.getBean().getType();
+               String packageName = bean.getBean().getPackageName();
+               File outputFile = new File(outputPath, packageName.replaceAll("\\.", File.separator) + File.separator + className + ".java");
+               outputFile.getParentFile().mkdirs();
+               System.out.println("Processing " + bean.getBean().getType() + " writing to " + outputFile.getAbsolutePath());
+               template.process(bean.getBean(), new FileWriter(outputFile));
+            }
+         }
+
          return true;
       } catch (Exception e) {
          throw Throwables.propagate(e);
@@ -144,7 +161,7 @@ public class DomainObjectDocletCleaner extends Doclet {
             outputPath = opt[1];
          }
          if (opt[0].equals("-format")) {
-            format = opt[1];
+            format = Format.fromValue(opt[1]);
          }
       }
    }
