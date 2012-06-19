@@ -24,35 +24,35 @@ out (assuming the parameters to the constructor match the field names!)
 Example
 -------
 
-A class with JAXB annotations can be written short-hand as follows:
+A class with JAXB annotations can be written short-hand as follows::
 
     package org.jclouds.cleanup.docs;
     
     import javax.xml.bind.annotation.XmlAttribute;
     
     /**
-     * Class comment for Docs example
-     * A few lines....
-     * Long
-     */
+    * Class comment for Docs example
+    * A few lines....
+    * Long
+    */
     public class Example {
-        /** @return name is required */
-        @XmlAttribute(required=true)
-        protected String name;
+     /** @return name is required */
+     @XmlAttribute(required=true)
+     protected String name;
     
-        /** @return attribute is not null */
-        @XmlAttribute(required=true)
-        protected String id;
+     /** @return attribute is not null */
+     @XmlAttribute(required=true)
+     protected String id;
     
-        /** Description of the example object */
-        @XmlAttribute
-        protected String description;
+     /** Description of the example object */
+     @XmlAttribute
+     protected String description;
     }
 
 This can be converted into a full bean with accessors, to which the field comments will be added, a Builder, etc. The 'mixed'
-output for the above is as follows:
-   
-   /*
+output for the above is as follows::
+
+    /*
     * Licensed to jclouds, Inc. (jclouds) under one or more
     * contributor license agreements.  See the NOTICE file
     * distributed with this work for additional information
@@ -70,32 +70,32 @@ output for the above is as follows:
     * specific language governing permissions and limitations
     * under the License.
     */
-   package org.jclouds.cleanup.docs;
-   
-   import static com.google.common.base.Preconditions.checkNotNull;
-   
-   import java.beans.ConstructorProperties;
-   
-   import javax.xml.bind.annotation.XmlAttribute;
-   import javax.inject.Named;
-   
-   import org.jclouds.javax.annotation.Nullable;
-   
-   import com.google.common.collect.ImmutableMultimap;
-   import com.google.common.collect.ImmutableList;
-   import com.google.common.collect.ImmutableMap;
-   import com.google.common.collect.Sets;
-   import com.google.common.collect.ImmutableSet;
-   import com.google.common.base.Objects;
-   import com.google.common.base.Objects.ToStringHelper;
-   
-   /**
+    package org.jclouds.cleanup.docs;
+    
+    import static com.google.common.base.Preconditions.checkNotNull;
+    
+    import java.beans.ConstructorProperties;
+    
+    import javax.xml.bind.annotation.XmlAttribute;
+    import javax.inject.Named;
+    
+    import org.jclouds.javax.annotation.Nullable;
+    
+    import com.google.common.collect.ImmutableMultimap;
+    import com.google.common.collect.ImmutableList;
+    import com.google.common.collect.ImmutableMap;
+    import com.google.common.collect.Sets;
+    import com.google.common.collect.ImmutableSet;
+    import com.google.common.base.Objects;
+    import com.google.common.base.Objects.ToStringHelper;
+    
+    /**
     * Class comment for Docs example
     * A few lines....
     * Long
-   */
-   public class Example {
-   
+    */
+    public class Example {
+    
       public static Builder<?> builder() { 
          return new ConcreteBuilder();
       }
@@ -103,10 +103,10 @@ output for the above is as follows:
       public Builder<?> toBuilder() { 
          return new ConcreteBuilder().fromExample(this);
       }
-   
+    
       public static abstract class Builder<T extends Builder<T>>  {
          protected abstract T self();
-   
+    
          protected String name;
          protected String id;
          protected String description;
@@ -118,7 +118,7 @@ output for the above is as follows:
             this.name = checkNotNull(name, "name");
             return self();
          }
-   
+    
          /** 
           * @see Example#getId()
           */
@@ -126,7 +126,7 @@ output for the above is as follows:
             this.id = checkNotNull(id, "id");
             return self();
          }
-   
+    
          /** 
           * @see Example#getDescription()
           */
@@ -134,7 +134,7 @@ output for the above is as follows:
             this.description = description; 
             return self();
          }
-   
+    
          public Example build() {
             return new Example(name, id, description);
          }
@@ -146,21 +146,21 @@ output for the above is as follows:
                      .description(in.getDescription());
          }
       }
-   
+    
       private static class ConcreteBuilder extends Builder<ConcreteBuilder> {
          @Override
          protected ConcreteBuilder self() {
             return this;
          }
       }
-   
+    
       @XmlAttribute(required=true)
       private String name;
       @XmlAttribute(required=true)
       private String id;
       @XmlAttribute
       private String description;
-   
+    
       @ConstructorProperties({
          "name", "id", "description"
       })
@@ -169,25 +169,25 @@ output for the above is as follows:
          this.id = checkNotNull(id, "id");
          this.description = description;
       }
-   
+    
       protected Example() {
          // for JAXB
       }
-   
+    
       /**
        * @return name is required
        */
       public String getName() {
          return this.name;
       }
-   
+    
       /**
        * @return attribute is not null
        */
       public String getId() {
          return this.id;
       }
-   
+    
       /**
        * Description of the example object
        */
@@ -195,12 +195,12 @@ output for the above is as follows:
       public String getDescription() {
          return this.description;
       }
-   
+    
       @Override
       public int hashCode() {
          return Objects.hashCode(name, id, description);
       }
-   
+    
       @Override
       public boolean equals(Object obj) {
          if (this == obj) return true;
@@ -220,5 +220,5 @@ output for the above is as follows:
       public String toString() {
          return string().toString();
       }
-   
-   }
+    
+    }
