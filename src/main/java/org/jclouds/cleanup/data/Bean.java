@@ -36,17 +36,18 @@ public class Bean extends BaseObject {
    // Used to re-order imports
    private static final List<String> ECLIPSE_INPUT_ORDER = ImmutableList.of("import static", "import java.", "import javax.", "import org.", "import ");
    private static final Set<String> DEFAULT_IMPORTS =
-         ImmutableSet.of(
+        // TODO remove unused imports at output (for now have optimise imports)
+        ImmutableSet.of(
                "import static com.google.common.base.Preconditions.checkNotNull;",
-               "import java.util.Collections;",
-               "import javax.inject.Inject;",
-               "import javax.inject.Named;",
+               "import java.beans.ConstructorProperties;", // for gson only
+               "import javax.inject.Named;",  // for gson only
                "import org.jclouds.javax.annotation.Nullable;",
                "import com.google.common.collect.ImmutableList;",
                "import com.google.common.collect.ImmutableMap;",
                "import com.google.common.collect.ImmutableMultimap;",
-               "import com.google.common.collect.ImmutableSet;",
-               "import com.google.common.base.Objects;",
+               "import com.google.common.collect.ImmutableSet;", 
+               "import com.google.common.collect.Sets;", // for jaxb only
+               "import com.google.common.base.Objects;", 
                "import com.google.common.base.Objects.ToStringHelper;"
          );
    protected final Set<String> imports = Sets.newHashSet(DEFAULT_IMPORTS);
@@ -154,7 +155,7 @@ public class Bean extends BaseObject {
    }
    
    public boolean isGson() {
-      return format == Format.GSON || format == Format.MIXED;
+      return format == Format.JSON || format == Format.MIXED;
    }   
    
    public boolean isSubclass() {

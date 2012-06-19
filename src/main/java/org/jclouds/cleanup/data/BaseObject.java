@@ -18,6 +18,7 @@
  */
 package org.jclouds.cleanup.data;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import java.util.Collection;
@@ -28,30 +29,27 @@ import java.util.List;
  */
 public abstract class BaseObject {
    protected final String type;
-   protected final List<String> annotations = Lists.newArrayList();
-   protected final List<String> javadocComment = Lists.newArrayList();
+   protected final List<String> annotations;
+   protected final List<String> javadocComment;
 
    public BaseObject(String type, Collection<String> annotations, Collection<String> javadocComment) {
       this.type = type;
-      addAnnotations(annotations);
-      this.javadocComment.addAll(javadocComment);
+      this.annotations = Lists.newArrayList(annotations);
+      this.javadocComment = ImmutableList.copyOf(javadocComment);
    }
 
+   protected void addAnnotation(String annotation) {
+      if (!annotations.contains(annotation)) {
+         annotations.add(annotation);
+      }
+   }
+   
    public String getType() {
       return type;
    }
 
    public List<String> getAnnotations() {
       return annotations;
-   }
-
-   public void addAnnotations(Collection<String> anno) {
-      this.annotations.addAll(anno);
-   }
-
-   public void adjustJavaDoc(Collection<String> otherJavadocComment) {
-      // TODO order these!
-      this.javadocComment.addAll(otherJavadocComment);
    }
 
    public Collection<String> getJavadocComment() {

@@ -18,10 +18,7 @@
  */
 package org.jclouds.cleanup.doclet;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Objects;
-import com.google.common.base.Predicate;
-import com.google.common.base.Throwables;
+import com.google.common.base.*;
 import com.google.common.collect.*;
 import com.google.common.io.NullOutputStream;
 import com.sun.javadoc.*;
@@ -31,9 +28,7 @@ import org.jclouds.util.Strings2;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  *
@@ -50,8 +45,8 @@ public class ClassDocParser {
          "JsonProperty", "value",
          "XmlElement", "name",
          "XmlAttribute", "name");
-
-   private List<String> annotationsToKill = ImmutableList.of("SerializedName", "Named");
+   public static final String[] booleanAccesorNames = {"is", "may", "can", "should", "cannot", "not"};
+   private List<String> annotationsToKill = ImmutableList.of("SerializedName", "Named", "Inject", "Nullable");
 
    private Collection<String> getAnnotations(ProgramElementDoc element) {
       List<String> result = Lists.newArrayList();
@@ -109,7 +104,6 @@ public class ClassDocParser {
       Multimap<String, String> tagsToOutput = LinkedListMultimap.create();
       if (defaultTags != null) tagsToOutput.putAll(defaultTags);
 
-      // TODO multimap?
       for (ProgramElementDoc element : elements) {
          if (element != null) {
             for (Tag tag : element.tags()) {
@@ -158,7 +152,6 @@ public class ClassDocParser {
    protected String removeUnnecessaryPackages(Type type, PackageDoc currentPackage, Collection<String> imports) {
       String fieldType = type.simpleTypeName();
       if (type.isPrimitive() || type.asClassDoc().containingPackage().name().equals("java.lang")) {
-         ;
       } else if (type.asClassDoc().containingPackage().equals(currentPackage) ||
             imports.contains("import " + type.qualifiedTypeName() + ";") ||
             imports.contains("import " + type.asClassDoc().containingPackage().name() + "*" + ";")) {
@@ -195,7 +188,7 @@ public class ClassDocParser {
          }
       }));
 
-      // TODO this is losing the existing indent
+      // TODO this is re-indenting inner classes (sometimes unpleasantly!)
       // Process inner classes
       for (ClassDoc clazz : element.innerClasses()) {
          if (!clazz.simpleTypeName().toLowerCase().endsWith("builder")) {
@@ -211,43 +204,124 @@ public class ClassDocParser {
          }
       }
 
-      // Process fields
+      // Extract these bits of information from the ClassDoc data
+      Map<String, String> serializedNames = Maps.newHashMap();
+      Set<String> nullableFields = Sets.newHashSet();
+      Map<String, MethodDoc> accessors = Maps.newHashMap();
+
+      for (ConstructorDoc constructor : element.constructors()) {
+         for (Parameter parameter : constructor.parameters()) {
+            for (AnnotationDesc anno : parameter.annotations()) {
+               if (Objects.equal(anno.annotationType().typeName(), "Nullable")) {
+                  nullableFields.add(parameter.name());
+               }
+            }
+         }
+      }
+
+      // Inject/Named
+      for (ConstructorDoc constructor : element.constructors()) {
+         for (AnnotationDesc anno : constructor.annotations()) {
+            if (Objects.equal(anno.annotationType().typeName(), "Inject") ||
+                Objects.equal(anno.annotationType().typeName(), "ConstructorProperties")) {
+               for (Parameter parameter : constructor.parameters()) {
+                  // try to pick-up the associations with fields
+                  String serializedName = getSerializedName(parameter.annotations());
+                  if (serializedName != null) {
+                     serializedNames.put(parameter.name(), serializedName);
+                  }
+               }
+            }
+         }
+      }
+
+      // ConstructorProperties
+      for (ConstructorDoc constructor : element.constructors()) {
+         Iterable<String> constructorProperties = null;
+         for (AnnotationDesc anno : constructor.annotations()) {
+            if (Objects.equal(anno.annotationType().typeName(), "ConstructorProperties")) {
+               String stuff = anno.elementValues()[0].value().toString();
+               constructorProperties = Splitter.on(",").trimResults(CharMatcher.anyOf("\t\n {}\"")).split(stuff);
+               break;
+            }
+         }
+
+         // Try to map to actual field names...
+         if (constructorProperties != null) {
+            Iterator<String> it = constructorProperties.iterator();
+            for (int i = 0; i < constructor.parameters().length && it.hasNext(); i++) {
+               serializedNames.put(constructor.parameters()[i].name(), it.next());
+            }
+            break;
+         }
+      }
+      
+      // Look for accessor and field annotations
+      for (FieldDoc field : element.fields()) {
+         
+         if (!field.isStatic()) {
+            String fieldName = field.name();
+
+            if (annotatatedAsNullable(field)) {
+               nullableFields.add(fieldName);
+            }
+            
+            // Accessors first
+            for (MethodDoc method : element.methods()) {
+               if (Objects.equal(method.name(), getAccessorName(field)) ||
+                     Objects.equal(method.name(), fieldName)) {
+                  accessors.put(fieldName, method);
+                  String serializedName = getSerializedName(method.annotations());
+                  if (serializedName != null) {
+                     serializedNames.put(fieldName, serializedName);
+                  }
+               }
+            }
+            
+            // Fields
+            String serializedName = getSerializedName(field.annotations());
+            if (serializedName != null) {
+               serializedNames.put(fieldName, serializedName);
+            }
+         }
+      }
+
+      // Construct the fields
       for (FieldDoc field : element.fields()) {
          if (field.isStatic()) {
             bean.addClassField(new ClassField(field.name(), properTypeName(field, bean.rawImports()), getAnnotations(field), extractComment(null, ImmutableMultimap.<String, String>of(), field)));
          } else {
             // Note we need to pick up any stray comments or annotations on accessors
-            InstanceField instanceField = new InstanceField(field.name(), properTypeName(field, bean.rawImports()), annotatatedAsNullable(field), getAnnotations(field), extractComment(null, ImmutableMultimap.<String, String>of(), field));
-            String serializedName = getSerializedName(field.annotations());
-            for (MethodDoc method : element.methods()) {
-               if (Objects.equal(method.name(), instanceField.getAccessorName()) ||
-                     Objects.equal(method.name(), instanceField.getName())) {
-                  instanceField.addAnnotations(getAnnotations(method));
-                  instanceField.adjustJavaDoc(extractComment(method));
-                  if (serializedName == null) {
-                     serializedName = getSerializedName(method.annotations());
-                  }
-               }
-            }
-            instanceField.setSerializedName(serializedName);
+            InstanceField instanceField = new InstanceField(field.name(),
+                  serializedNames.get(field.name()),
+                  getAccessorName(field), properTypeName(field, bean.rawImports()),
+                  nullableFields.contains(field.name()),
+                  getAnnotations(field),
+                  extractComment(null, ImmutableMultimap.<String, String>of(), field, accessors.get(field.name())));
             bean.addInstanceField(instanceField);
          }
       }
 
-      // Process @Inject constructor (if any)
-      for (ConstructorDoc constructor : element.constructors()) {
-         if (getAnnotations(constructor).contains("@Inject")) {
-            for (Parameter parameter : constructor.parameters()) {
-               // try to pick-up the associations with fields
-               InstanceField field = bean.getInstanceField(parameter.name());
-               if (field != null && field.getSerializedName() == null) {
-                  field.setSerializedName(getSerializedName(parameter.annotations()));
-               }
+      return new BeanAndSuperClassName(bean, superClass);
+   }
+
+   public static String getAccessorName(FieldDoc field) {
+      String name = field.name();
+      String fieldNameUC = name.substring(0, 1).toUpperCase() + name.substring(1);
+      String getterName = null;
+      if (Objects.equal(field.type().simpleTypeName().toLowerCase(), "boolean")) {
+         for (String starter : booleanAccesorNames) {
+            if (name.startsWith(starter)) {
+               getterName = name;
             }
          }
+         if (getterName == null) {
+            getterName = "is" + fieldNameUC;
+         }
+      } else {
+         getterName = "get" + fieldNameUC;
       }
-
-      return new BeanAndSuperClassName(bean, superClass);
+      return getterName;
    }
 
    private String getSerializedName(AnnotationDesc... annotationDescs) {

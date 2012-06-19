@@ -13,7 +13,7 @@ public abstract class AbstractTest {
    /**
     * Hiding away some hookiness that locates target based upon class.getResource().getFile()!
     */
-   protected File generateBeans(String packagePath, String format) throws Exception {
+   protected File generateBeans(String packagePath, String format, String outputPath) throws Exception {
       // Our classes are in the classpath!
       File f = new File(AbstractTest.class.getResource(packagePath).getFile());
       File classesDir = f.getParentFile();
@@ -24,7 +24,7 @@ public abstract class AbstractTest {
       }
       assertTrue(targetDir.exists());
       assertEquals(targetDir.getName(), "target");
-      File generatedDir = new File(targetDir, "generated-sources/cleanbeans");
+      File generatedDir = new File(targetDir, outputPath);
       File simpleTestPackage = new File(generatedDir, packagePath);
       
       // Be careful to clean up first!

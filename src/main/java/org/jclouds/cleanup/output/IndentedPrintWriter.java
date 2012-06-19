@@ -20,7 +20,8 @@ package org.jclouds.cleanup.output;
 
 import com.google.common.base.Strings;
 
-import java.io.*;
+import java.io.OutputStream;
+import java.io.PrintWriter;
 
 /**
  * Attempts to indent java source code
@@ -36,18 +37,10 @@ public class IndentedPrintWriter extends PrintWriter {
    private boolean hangingIndent = false;
    private boolean hangingComment = false;
    private StringBuffer line = new StringBuffer();
-
+   
    public IndentedPrintWriter(OutputStream outputStream) {
       super(outputStream);
       flush();
-   }
-
-   public IndentedPrintWriter(String s, String s1) throws FileNotFoundException, UnsupportedEncodingException {
-      super(s, s1);
-   }
-
-   public IndentedPrintWriter(File file, String s) throws FileNotFoundException, UnsupportedEncodingException {
-      super(file, s);
    }
 
    public int currentIndent() {
@@ -67,10 +60,10 @@ public class IndentedPrintWriter extends PrintWriter {
       if (toPrint.equals("}") || toPrint.equals(")")) beforeIndent--;
 
       if (beforeIndent < 0) beforeIndent = 0;
-      super.print(Strings.repeat(indentString, beforeIndent) + (hangingComment ? " " : ""));
-      super.print(toPrint);
-      super.println();
-
+      
+      // TODO avoid long lines here!
+      printlnAux(toPrint);
+      
       line.setLength(0);
 
       beforeIndent = afterIndent;
@@ -79,6 +72,12 @@ public class IndentedPrintWriter extends PrintWriter {
       if (toPrint.endsWith("}") || toPrint.endsWith(";") || toPrint.endsWith("{") || toPrint.endsWith("*/")) {
          hangingIndent = false;
       }
+   }
+   
+   private void printlnAux(String toPrint) {
+      super.print(Strings.repeat(indentString, beforeIndent) + (hangingComment ? " " : ""));
+      super.print(toPrint);
+      super.println();
    }
 
    @Override

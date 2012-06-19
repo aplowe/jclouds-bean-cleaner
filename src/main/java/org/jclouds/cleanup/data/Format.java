@@ -20,7 +20,7 @@ package org.jclouds.cleanup.data;
 
 public enum Format {
    JAXB,
-   GSON,
+   JSON,
    MIXED,
    MINIMAL;
 

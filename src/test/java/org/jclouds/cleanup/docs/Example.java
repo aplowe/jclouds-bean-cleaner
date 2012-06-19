@@ -7,7 +7,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * A few lines....
  * Long
  */
-public class Example<T extends Example<T>> {
+public class Example {
    /**
     * The mime-type
     */

@@ -19,6 +19,7 @@
 package org.jclouds.cleanup.data;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.ImmutableSet;
 
 import java.util.Collection;
 import java.util.regex.Matcher;
@@ -37,6 +38,10 @@ public abstract class Field extends BaseObject {
 
    public String getName() {
       return name;
+   }
+
+   public boolean isPrimative() {
+      return ImmutableSet.of("byte", "short", "int", "long", "float", "double", "char", "boolean").contains(simpleType());
    }
 
    public boolean isSet() {
