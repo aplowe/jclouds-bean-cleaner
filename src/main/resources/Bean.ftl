@@ -182,7 +182,9 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
       this.${field.name} = ${field.name};
       [/#if]      
       [#else]
-      [#if field.set]
+      [#if field.primative]
+      this.${field.name} = ${field.name};
+      [#elseif field.set]
       this.${field.name} = ImmutableSet.copyOf(checkNotNull(${field.name}, "${field.name}"));      
       [#elseif field.list]
       this.${field.name} = ImmutableList.copyOf(checkNotNull(${field.name}, "${field.name}"));     
