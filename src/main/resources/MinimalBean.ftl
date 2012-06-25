@@ -52,6 +52,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    public static ${field.javaType} ${field.name};
 
 [/#list]
+[#-- ^^ ABOVE COPY-AND-PASTED FROM Bean.ftl ^^ --]
 
 [#-- Print fields --]
 [#list instanceFields![] as field]
@@ -63,11 +64,10 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [#list field.annotations![] as anno]
    ${anno}
    [/#list]
-   [#if field.set]
-   private ${field.type} ${field.name} = Sets.newLinkedHashSet(); // maintaining order
-   [#else]
-   private ${field.type} ${field.name};
+   [#if field.nullable]
+   @Nullable
    [/#if]
+   private ${field.type} ${field.name};
 [/#list]
 
 }
