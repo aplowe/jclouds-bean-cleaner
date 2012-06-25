@@ -98,8 +98,10 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
          this.${field.name} = ImmutableMap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
          [#elseif field.multimap]
          this.${field.name} = ImmutableMultimap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
+         [#elseif field.nullable]
+         this.${field.name} = checkNotNull(${field.name}, "${field.name}");
          [#else]
-         this.${field.name} =[#if field.nullable || field.primative] ${field.name}; [#else] checkNotNull(${field.name}, "${field.name}");[/#if]
+         this.${field.name} = ${field.name};
          [/#if]
          return self();
       }
@@ -142,15 +144,15 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [#list field.annotations![] as anno]
    ${anno}
    [/#list]
-   [#if gson && field.name != field.serializedName]
-   @Named("${field.serializedName}")
-   [/#if]
    [#if field.set]
    private ${field.type} ${field.name} = Sets.newLinkedHashSet(); // maintaining order
    [#else]
    private ${field.type} ${field.name};
    [/#if]
    [#else]
+   [#if gson && field.name != field.serializedName]
+   @Named("${field.serializedName}")
+   [/#if]
    private final ${field.type} ${field.name};
    [/#if]
 [/#list]

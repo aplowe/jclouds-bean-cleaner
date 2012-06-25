@@ -36,7 +36,7 @@ public class InstanceField extends Field {
    }
    
    public boolean isNullable() {
-      return nullable;
+      return !isPrimative() && nullable;
    }
 
    public String getSerializedName() {
