@@ -1,5 +1,5 @@
 [#ftl]
-[#macro namedanno field][#if field.nullable]@Nullable [/#if][/#macro]
+[#macro nullable field][#if field.nullable]@Nullable [/#if][/#macro]
 /*
  * Licensed to jclouds, Inc. (jclouds) under one or more
  * contributor license agreements.  See the NOTICE file
@@ -49,8 +49,8 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    }
 
 [/#list]
-[#list classFields![] as field]
-   public static ${field.javaType} ${field.name};
+[#list staticFields![] as field]
+   public static ${field.simpleType} ${field.name};
 
 [/#list]
    [#-- Builder --]
@@ -98,8 +98,6 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
          this.${field.name} = ImmutableMap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
          [#elseif field.multimap]
          this.${field.name} = ImmutableMultimap.copyOf(checkNotNull(${field.name}, "${field.name}"));     
-         [#elseif field.nullable]
-         this.${field.name} = checkNotNull(${field.name}, "${field.name}");
          [#else]
          this.${field.name} = ${field.name};
          [/#if]
@@ -140,6 +138,9 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [/#if]
 [#-- Print fields --]
 [#list instanceFields![] as field]
+   [#if gson && field.name != field.serializedName]
+   @Named("${field.serializedName}")
+   [/#if]
 [#if jaxb]
    [#list field.annotations![] as anno]
    ${anno}
@@ -150,9 +151,6 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    private ${field.type} ${field.name};
    [/#if]
    [#else]
-   [#if gson && field.name != field.serializedName]
-   @Named("${field.serializedName}")
-   [/#if]
    private final ${field.type} ${field.name};
    [/#if]
 [/#list]
@@ -164,7 +162,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    })
    [#else]
    [/#if]
-   protected ${type}([@namedanno field=allFields[0] /]${allFields[0].type} ${allFields[0].name}[#if allFields?size > 1][#list allFields[1..] as field], [@namedanno field=field /]${field.type} ${field.name}[/#list][/#if]) {
+   protected ${type}([@nullable field=allFields[0] /]${allFields[0].type} ${allFields[0].name}[#if allFields?size > 1][#list allFields[1..] as field], [@nullable field=field /]${field.type} ${field.name}[/#list][/#if]) {
    [#if subclass]
       super(${superFields[0].name}[#if superFields?size > 1][#list superFields[1..] as field], ${field.name}[/#list][/#if]);
    [/#if]
@@ -243,7 +241,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    }
    
    protected ToStringHelper string() {
-      return [#if subclass]super.string()[#else]Objects.toStringHelper("")[/#if]
+      return [#if subclass]super.string()[#else]Objects.toStringHelper(this)[/#if]
             [#list instanceFields as field].add("${field.name}", ${field.name})[/#list];
    }
    

@@ -10,9 +10,10 @@ import com.sun.javadoc.*;
 import freemarker.cache.ClassTemplateLoader;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
-import org.jclouds.cleanup.data.BeanAndSuperClassName;
-import org.jclouds.cleanup.data.Format;
+import org.jclouds.cleanup.data.Bean;
+import org.jclouds.cleanup.data.ParseOptions;
 import org.jclouds.cleanup.doclet.ClassDocParser;
+import org.jclouds.logging.Logger;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -22,19 +23,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.LogManager;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
- * Interrogates the class structure using the doclet api and extracts the comments immediately preceding classes, fields
- * and methods as required.
+ * Interrogates the class structure using the doclet api, extracts the javadocs of classes, fields
+ * and methods as required, and generates replacement source code.
  *
  * @see <a href=
  *      "http://docs.oracle.com/javase/6/docs/technotes/guides/javadoc/doclet/overview.html"
  *      />
  */
 public class DomainObjectDocletCleaner extends Doclet {
+   private static final Logger LOG = Logger.CONSOLE;
+   private static final ParseOptions parseOptions = new ParseOptions(ParseOptions.Format.JSON, ParseOptions.NullableHandling.DEFAULT);
+   private static final Configuration cfg = new Configuration();
+
    private static String outputPath = "target/generated-sources/cleanbeans";
-   private static Format format = Format.JSON;
-   private static Configuration cfg = new Configuration();
 
    /**
     * Bootstrapping javadoc application to save users having to remember all the arguments.
@@ -44,8 +50,10 @@ public class DomainObjectDocletCleaner extends Doclet {
     * @throws InterruptedException if the spawned javadoc process is interrupted
     */
    public static void main(String[] args) throws IOException, InterruptedException {
-      String sourcePath = args[0];
-      String classPath = args[1];
+      checkArgument(args.length > 1, "You need to supply a sourcePath and a classPath");
+
+      String sourcePath = args[args.length - 2];
+      String classPath = args[args.length - 1];
 
       List<String> command = Lists.newArrayList("javadoc",
             "-classpath", System.getProperty("java.class.path") + ":" + classPath,
@@ -55,7 +63,7 @@ public class DomainObjectDocletCleaner extends Doclet {
       );
 
       if (args.length > 2) {
-         Collections.addAll(command, Arrays.copyOfRange(args, 2, args.length));
+         Collections.addAll(command, Arrays.copyOfRange(args, 0, args.length - 2));
       }
 
       command.addAll(listFileNames(new File(sourcePath)));
@@ -68,11 +76,13 @@ public class DomainObjectDocletCleaner extends Doclet {
       in.start();
       err.start();
 
-      if (process.waitFor() == 0) {
-         System.out.println("Javadoc returned successfully");
+      int returnCode = process.waitFor();
+      if (returnCode == 0) {
+         LOG.info("Javadoc returned successfully");
+         LOG.info("You passed the following arguments: " + Joiner.on(" ").join(args));
       } else {
-         System.out.println("Javadoc returned an error code");
-         System.out.println("You passed the following arguments: " + Joiner.on(" ").join(args));
+         LOG.error("Javadoc returned error code " + returnCode);
+         LOG.info("You passed the following arguments: " + Joiner.on(" ").join(args));
       }
    }
 
@@ -92,7 +102,9 @@ public class DomainObjectDocletCleaner extends Doclet {
    @SuppressWarnings("unused")
    public static int optionLength(String option) {
       if (Objects.equal(option, "-d")) return 2;
+      if (Objects.equal(option, "-verbose")) return 1;
       if (Objects.equal(option, "-format")) return 2;
+      if (Objects.equal(option, "-nullable")) return 2;
       return Doclet.optionLength(option);
    }
 
@@ -119,33 +131,23 @@ public class DomainObjectDocletCleaner extends Doclet {
          readOptions(root.options());
 
          ClassDocParser parser = new ClassDocParser();
-         Template template = cfg.getTemplate(format == Format.MINIMAL ? "MinimalBean.ftl" : "Bean.ftl");
-         List<BeanAndSuperClassName> beans = Lists.newArrayList();
-         
+         Template template = cfg.getTemplate(parseOptions.getFormat() == ParseOptions.Format.MINIMAL ? "MinimalBean.ftl" : "Bean.ftl");
+         List<Bean> beans = Lists.newArrayList();
+
          for (ClassDoc clazz : root.classes()) {
-            if (clazz.containingClass() == null ) {
-               beans.add(parser.parseBean(clazz, format));
+            if (clazz.containingClass() == null) {
+               beans.add(parser.parseBean(clazz, parseOptions, false));
             }
          }
-
-         for (BeanAndSuperClassName bean : beans) {
-            if (bean.getSuperClassName() != null) {
-               for (BeanAndSuperClassName superBean : beans) {
-                  if (Objects.equal(superBean.getBean().getType(), bean.getSuperClassName())) {
-                     bean.getBean().setSuperClass(superBean.getBean());
-                  }
-               }
-            }
-         }
-
-         for (BeanAndSuperClassName bean : beans) {
-            if (bean.getBean().getAllFields().size() > 0) {
-               String className = bean.getBean().getType();
-               String packageName = bean.getBean().getPackageName();
+         
+         for (Bean bean : beans) {
+            if (bean.getAllFields().size() > 0) {
+               String className = bean.getType();
+               String packageName = bean.getPackageName();
                File outputFile = new File(outputPath, packageName.replaceAll("\\.", File.separator) + File.separator + className + ".java");
                outputFile.getParentFile().mkdirs();
-               System.out.println("Processing " + bean.getBean().getType() + " writing to " + outputFile.getAbsolutePath());
-               template.process(bean.getBean(), new FileWriter(outputFile));
+               LOG.info("Processing " + bean.getType() + " writing to " + outputFile.getAbsolutePath());
+               template.process(bean, new FileWriter(outputFile));
             }
          }
 
@@ -155,13 +157,18 @@ public class DomainObjectDocletCleaner extends Doclet {
       }
    }
 
-   private static void readOptions(String[][] options) {
+   private static void readOptions(String[][] options) throws IOException {
       for (String[] opt : options) {
-         if (opt[0].equals("-d")) {
+         if (Objects.equal(opt[0], "-verbose")) {
+            // Quick-fix for verbose is to use JDK logging
+            LogManager.getLogManager().readConfiguration(
+                  DomainObjectDocletCleaner.class.getResourceAsStream("/verbose-logging.properties"));
+         }else if (Objects.equal(opt[0], "-d")) {
             outputPath = opt[1];
-         }
-         if (opt[0].equals("-format")) {
-            format = Format.fromValue(opt[1]);
+         } else if (Objects.equal(opt[0], "-format")) {
+            parseOptions.setFormat(ParseOptions.Format.fromValue(opt[1]));
+         } else if (Objects.equal(opt[0], "-nullable")) {
+            parseOptions.setNullableHandling(ParseOptions.NullableHandling.fromValue(opt[1]));
          }
       }
    }

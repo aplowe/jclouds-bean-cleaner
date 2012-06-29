@@ -24,35 +24,54 @@ import com.google.common.io.NullOutputStream;
 import com.sun.javadoc.*;
 import org.jclouds.cleanup.data.*;
 import org.jclouds.cleanup.output.IndentedPrintWriter;
+import org.jclouds.logging.Logger;
+import org.jclouds.logging.jdk.JDKLogger;
 import org.jclouds.util.Strings2;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
+ * Interrogates the class structure using the doclet api and extracts the javadoc comments and annotations assigned to
+ * classes, fields and methods as required.
  *
+ * @see <a href=
+ *      "http://docs.oracle.com/javase/6/docs/technotes/guides/javadoc/doclet/overview.html"
+ *      />
  */
 public class ClassDocParser {
-
    /**
     * Patterns applied to annotations to determine serialized names
     * (always try all of them in case we're moving from one serialisation style or format to another)
     */
-   private Map<String, String> serializedNameGrabbers = ImmutableMap.of(
+   private static final Map<String, String> SERIALIZED_NAME_GRABBERS = ImmutableMap.of(
          "Named", "value",
          "SerializedName", "value",
          "JsonProperty", "value",
          "XmlElement", "name",
          "XmlAttribute", "name");
-   public static final String[] booleanAccesorNames = {"is", "may", "can", "should", "cannot", "not"};
-   private List<String> annotationsToKill = ImmutableList.of("SerializedName", "Named", "Inject", "Nullable");
+   /**
+    * Boolean accessors are a little tricksy
+    */
+   public static final String[] BOOLEAN_ACCESOR_NAMES = {"is", "may", "can", "should", "cannot", "not"};
+   /**
+    * Remove all of these (we generate replacements, as necessary, depending on requested output format)
+    */
+   private static final List<String> ANNOTATIONS_TO_KILL = ImmutableList.of("SerializedName", "Named", "Inject", "Nullable");
+
+   // Quick-fix for verbose is to use JDK logging
+   private static final Logger LOG = new JDKLogger.JDKLoggerFactory().getLogger("jclouds-cleaner");
+
+   private final Map<String, Bean> CACHE = Maps.newHashMap();
 
    private Collection<String> getAnnotations(ProgramElementDoc element) {
       List<String> result = Lists.newArrayList();
       for (AnnotationDesc atree : element.annotations()) {
          String tmp = "@" + atree.annotationType().simpleTypeName();
-         if (!annotationsToKill.contains(atree.annotationType().simpleTypeName())) {
+         if (!ANNOTATIONS_TO_KILL.contains(atree.annotationType().simpleTypeName())) {
             if (atree.elementValues().length == 1 && Objects.equal(atree.elementValues()[0].element().name(), "value")) {
                tmp += "(" + atree.elementValues()[0].value() + ")";
             } else if (atree.elementValues().length > 0) {
@@ -71,6 +90,7 @@ public class ClassDocParser {
             return true;
          }
          if (ImmutableSet.of("XmlElement", "XmlAttribute", "XmlElementRef").contains(atree.annotationType().simpleTypeName())) {
+            // Note: default is that it isn't required (i.e. it IS nullable)
             shouldBeRequired = true;
             for (AnnotationDesc.ElementValuePair evp : atree.elementValues()) {
                if (Objects.equal("required", evp.element().name()) && Objects.equal(Boolean.TRUE, evp.value().value())) {
@@ -79,7 +99,6 @@ public class ClassDocParser {
             }
          }
       }
-      // Note: if we've determined that it should be marked as required we return true
       return shouldBeRequired;
    }
 
@@ -164,21 +183,39 @@ public class ClassDocParser {
       return fieldType;
    }
 
-   public BeanAndSuperClassName parseBean(ClassDoc element, Format format) {
-      String superClass = null;
+   public Bean parseBean(ClassDoc element, ParseOptions options, boolean asSuperClass) {
+      checkNotNull(element, "element");
+      checkNotNull(options, "options");
+
+      ParseOptions.NullableHandling nullableHandling = options.getNullableHandling();
+      Bean superClass = null;
       if (element.superclassType() != null && !Objects.equal(element.superclassType().qualifiedTypeName(), "java.lang.Object")) {
-         superClass = element.superclassType().simpleTypeName();
+         String superClassQualifiedName = element.superclassType().qualifiedTypeName();
+         if (!CACHE.containsKey(superClassQualifiedName)) {
+            LOG.debug("Parsing superclass " + superClassQualifiedName);
+            parseBean(element.superclassType().asClassDoc(), options, true);
+         }
+         superClass = checkNotNull(CACHE.get(superClassQualifiedName), "oops failed to parse superclass " + superClassQualifiedName + " of " + element.name());
       }
 
-      Bean bean = new Bean(element.containingPackage().toString(), element.isAbstract(), format, element.simpleTypeName(), getAnnotations(element), extractComment("Class " + element.name(), null, element));
+      Bean bean = new Bean(superClass, element.containingPackage().toString(), element.isAbstract(), options,
+            element.simpleTypeName(), getAnnotations(element), extractComment("Class " + element.name(), null, element));
+
+      LOG.debug("Parsing bean " + bean);
 
       // Process imports
-      List<String> lines;
+      List<String> lines = ImmutableList.of();
       try {
-         // This is actually helpful (oddly!)
-         lines = ImmutableList.copyOf(Strings2.toStringAndClose(new FileInputStream(element.position().file())).split("\n"));
+         if (element.position() != null && element.position().file() != null) {
+            // This is actually helpful (oddly!)
+            lines = ImmutableList.copyOf(Strings2.toStringAndClose(new FileInputStream(element.position().file())).split("\n"));
+         }
       } catch (IOException ex) {
-         throw Throwables.propagate(ex);
+         if (asSuperClass) LOG.debug("Failed to parse imports et al from superclass " + bean);
+         else {
+            LOG.error("Failed to parse imports et al for " + bean, ex);
+            Throwables.propagate(ex);
+         }
       }
 
       bean.addImports(Sets.filter(ImmutableSet.copyOf(lines), new Predicate<String>() {
@@ -200,6 +237,7 @@ public class ClassDocParser {
                content.add(lines.get(i).trim());
             }
             content.remove(content.size() - 1);
+            LOG.debug("Processing inner class " + bean.getType() + "." + clazz.name());
             bean.addInnerClass(new InnerClass("public static " + (clazz.isEnum() ? "enum" : "class"), clazz.simpleTypeName(), getAnnotations(clazz), extractComment(clazz), content));
          }
       }
@@ -211,9 +249,18 @@ public class ClassDocParser {
 
       for (ConstructorDoc constructor : element.constructors()) {
          for (Parameter parameter : constructor.parameters()) {
-            for (AnnotationDesc anno : parameter.annotations()) {
-               if (Objects.equal(anno.annotationType().typeName(), "Nullable")) {
-                  nullableFields.add(parameter.name());
+            // options state field MUST be nullable
+            if (nullableHandling.mustBeNullable(parameter.name())) {
+               LOG.debug(nullableHandling + " marking " + bean.getType() + "." + parameter + " as nullable");
+               nullableFields.add(parameter.name());
+            }
+            // options state field MAY be nullable
+            if (nullableHandling.maybeNullable(parameter.name())) {
+               for (AnnotationDesc anno : parameter.annotations()) {
+                  if (Objects.equal(anno.annotationType().typeName(), "Nullable")) {
+                     LOG.debug(nullableHandling + " marking " + bean.getType() + "." + parameter + " as nullable (constructor annotation)");
+                     nullableFields.add(parameter.name());
+                  }
                }
             }
          }
@@ -223,7 +270,7 @@ public class ClassDocParser {
       for (ConstructorDoc constructor : element.constructors()) {
          for (AnnotationDesc anno : constructor.annotations()) {
             if (Objects.equal(anno.annotationType().typeName(), "Inject") ||
-                Objects.equal(anno.annotationType().typeName(), "ConstructorProperties")) {
+                  Objects.equal(anno.annotationType().typeName(), "ConstructorProperties")) {
                for (Parameter parameter : constructor.parameters()) {
                   // try to pick-up the associations with fields
                   String serializedName = getSerializedName(parameter.annotations());
@@ -255,17 +302,18 @@ public class ClassDocParser {
             break;
          }
       }
-      
+
       // Look for accessor and field annotations
       for (FieldDoc field : element.fields()) {
-         
+
          if (!field.isStatic()) {
             String fieldName = field.name();
 
-            if (annotatatedAsNullable(field)) {
+            if (nullableHandling.maybeNullable(fieldName) && annotatatedAsNullable(field)) {
+               LOG.debug(nullableHandling + " marking " + bean.getType() + "." + fieldName + " as nullable (field annotation)");
                nullableFields.add(fieldName);
             }
-            
+
             // Accessors first
             for (MethodDoc method : element.methods()) {
                if (Objects.equal(method.name(), getAccessorName(field)) ||
@@ -273,14 +321,20 @@ public class ClassDocParser {
                   accessors.put(fieldName, method);
                   String serializedName = getSerializedName(method.annotations());
                   if (serializedName != null) {
+                     LOG.debug(bean.getType() + "." + fieldName + " serialized name is " + serializedName + " (getter annotation)");
                      serializedNames.put(fieldName, serializedName);
+                  }
+                  if (nullableHandling.maybeNullable(fieldName) && annotatatedAsNullable(method)) {
+                     LOG.debug(nullableHandling + " marking " + bean.getType() + "." + fieldName + " as nullable (getter annotation)");
+                     nullableFields.add(fieldName);
                   }
                }
             }
-            
+
             // Fields
             String serializedName = getSerializedName(field.annotations());
             if (serializedName != null) {
+               LOG.debug(bean.getType() + "." + fieldName + " serialized name is " + serializedName + " (field annotation)");
                serializedNames.put(fieldName, serializedName);
             }
          }
@@ -289,8 +343,10 @@ public class ClassDocParser {
       // Construct the fields
       for (FieldDoc field : element.fields()) {
          if (field.isStatic()) {
+            LOG.debug("adding static field " + bean.getType() + "." + field.name());
             bean.addClassField(new ClassField(field.name(), properTypeName(field, bean.rawImports()), getAnnotations(field), extractComment(null, ImmutableMultimap.<String, String>of(), field)));
          } else {
+            LOG.debug("adding instance field " + bean.getType() + "." + field.name());
             // Note we need to pick up any stray comments or annotations on accessors
             InstanceField instanceField = new InstanceField(field.name(),
                   serializedNames.get(field.name()),
@@ -302,7 +358,9 @@ public class ClassDocParser {
          }
       }
 
-      return new BeanAndSuperClassName(bean, superClass);
+      CACHE.put(element.qualifiedTypeName(), bean);
+
+      return bean;
    }
 
    public static String getAccessorName(FieldDoc field) {
@@ -310,7 +368,7 @@ public class ClassDocParser {
       String fieldNameUC = name.substring(0, 1).toUpperCase() + name.substring(1);
       String getterName = null;
       if (Objects.equal(field.type().simpleTypeName().toLowerCase(), "boolean")) {
-         for (String starter : booleanAccesorNames) {
+         for (String starter : BOOLEAN_ACCESOR_NAMES) {
             if (name.startsWith(starter)) {
                getterName = name;
             }
@@ -326,9 +384,9 @@ public class ClassDocParser {
 
    private String getSerializedName(AnnotationDesc... annotationDescs) {
       for (AnnotationDesc anno : annotationDescs) {
-         if (serializedNameGrabbers.containsKey(anno.annotationType().simpleTypeName())) {
+         if (SERIALIZED_NAME_GRABBERS.containsKey(anno.annotationType().simpleTypeName())) {
             for (AnnotationDesc.ElementValuePair pair : anno.elementValues()) {
-               if (Objects.equal(serializedNameGrabbers.get(anno.annotationType().simpleTypeName()), pair.element().name())) {
+               if (Objects.equal(SERIALIZED_NAME_GRABBERS.get(anno.annotationType().simpleTypeName()), pair.element().name())) {
                   return (String) pair.value().value();
                }
             }

@@ -18,14 +18,21 @@
  */
 package org.jclouds.cleanup;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class StreamGobbler extends Thread {
+   private static final Set<String> levels = ImmutableSet.of(
+         "DEBUG:", "INFO:", "WARN:", "ERROR:", "FINE:", "FINER:", "FINEST:"
+   );
+   
    InputStream is;
    String type;
 
@@ -39,8 +46,15 @@ public class StreamGobbler extends Thread {
          InputStreamReader isr = new InputStreamReader(is);
          BufferedReader br = new BufferedReader(isr);
          String line;
-         while ((line = br.readLine()) != null)
-            System.out.println(type + ">" + line);
+         while ((line = br.readLine()) != null) {
+            // Stripping out boring timestamps
+            if (line.contains("org.jclouds.logging.jdk.JDKLogger") || line.contains("freemarker.log.JDK14LoggerFactory")) continue;
+            boolean isLoggingLine = false;
+            for (String level : levels) {
+               isLoggingLine = isLoggingLine || line.startsWith(level);
+            } 
+            System.out.println(isLoggingLine ? line : type + ": " + line);
+         }
       } catch (IOException ioe) {
          ioe.printStackTrace();
       }

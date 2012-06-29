@@ -55,19 +55,16 @@ public class Bean extends BaseObject {
    private final List<ClassField> staticFields = Lists.newArrayList();
    private final List<InnerClass> innerClasses = Lists.newArrayList();
    private final String packageName;
-   private Bean superClass;
+   private final Bean superClass;
    private final boolean isAbstract;
-   private final Format format;
+   private final ParseOptions options;
 
-   public Bean(String packageName, boolean isAbstract, Format format, String type, Collection<String> annotations, Collection<String> javadocComment) {
+   public Bean(Bean superClass, String packageName, boolean isAbstract, ParseOptions options, String type, Collection<String> annotations, Collection<String> javadocComment) {
       super(type, annotations, javadocComment);
+      this.superClass = superClass;
       this.packageName = packageName;
       this.isAbstract = isAbstract;
-      this.format = format;
-   }
-
-   public void setSuperClass(Bean superClass) {
-      this.superClass = superClass;
+      this.options = options;
    }
 
    public void addInstanceField(InstanceField field) {
@@ -151,11 +148,11 @@ public class Bean extends BaseObject {
 
    // Convenience methods!
    public boolean isJaxb() {
-      return format == Format.JAXB || format == Format.MIXED;
+      return options.getFormat().supports(ParseOptions.Format.JAXB);
    }
    
    public boolean isGson() {
-      return format == Format.JSON || format == Format.MIXED;
+      return options.getFormat().supports(ParseOptions.Format.JSON);
    }   
    
    public boolean isSubclass() {
@@ -185,5 +182,10 @@ public class Bean extends BaseObject {
          result.addAll(current.getInstanceFields());
       }
       return result;
+   }
+   
+   @Override
+   public String toString() {
+      return Objects.toStringHelper(this).add("type", type).toString();
    }
 }

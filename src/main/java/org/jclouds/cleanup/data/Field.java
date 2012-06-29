@@ -41,30 +41,30 @@ public abstract class Field extends BaseObject {
    }
 
    public boolean isPrimative() {
-      return ImmutableSet.of("byte", "short", "int", "long", "float", "double", "char", "boolean").contains(simpleType());
+      return ImmutableSet.of("byte", "short", "int", "long", "float", "double", "char", "boolean").contains(getSimpleType());
    }
 
    public boolean isSet() {
-      return Objects.equal(simpleType(), "Set");
+      return Objects.equal(getSimpleType(), "Set");
    }
 
    public boolean isList() {
-      return Objects.equal(simpleType(), "List");
+      return Objects.equal(getSimpleType(), "List");
    }
 
    public boolean isMap() {
-      return Objects.equal(simpleType(), "Map");
+      return Objects.equal(getSimpleType(), "Map");
    }
 
    public boolean isOptional() {
-      return Objects.equal(simpleType(), "Optional");
+      return Objects.equal(getSimpleType(), "Optional");
    }
    
    public boolean isMultimap() {
-      return Objects.equal(simpleType(), "Multimap");
+      return Objects.equal(getSimpleType(), "Multimap");
    }
 
-   public String simpleType() {
+   public String getSimpleType() {
       return type.replaceAll("^java\\.util\\.", "").replaceAll("<.*>", "");
    }
    
