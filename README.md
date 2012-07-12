@@ -7,7 +7,7 @@ java -jar cleaner-1.0.jar [sourcepath] [classpath] -format [format]
 
 Where:
 
-- [format] is one of json, jaxb, mixed (json & jaxb) or minimal
+- [format] is one of json, jaxb, json_serialize (json plus @Named fields for serialization), mixed (json_serialize & jaxb) or minimal
 - [sourcepath] points to the folder containing the source for your beans
 - [classpath] is something to be added to the classpath of the run (e.g. target/classes or "target/classes:../somewhere").
    

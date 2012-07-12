@@ -22,28 +22,4 @@ public class VCloudTest extends AbstractTest {
       assertEquals(packageDir.listFiles().length, 9);
    }
 
-   @Test
-   public void testJsonIdsNotNull() throws Exception {
-      File packageDir = generateBeans("/org/jclouds/vcloud/director/v1_5/domain", "json", "not_id", "test-data/vcloud-json-id");
-      assertEquals(packageDir.listFiles().length, 9);
-   }
-
-   @Test
-   public void testJsonKeysNotNull() throws Exception {
-      File packageDir = generateBeans("/org/jclouds/vcloud/director/v1_5/domain", "json", "not_key", "test-data/vcloud-json-key");
-      assertEquals(packageDir.listFiles().length, 9);
-   }
-   
-   @Test
-   public void testJsonOnlyIdsNotNull() throws Exception {
-      File packageDir = generateBeans("/org/jclouds/vcloud/director/v1_5/domain", "json", "only_id", "test-data/vcloud-json-only-id");
-      assertEquals(packageDir.listFiles().length, 9);
-   }
-
-   @Test
-   public void testJsonOnlyKeysNotNull() throws Exception {
-      File packageDir = generateBeans("/org/jclouds/vcloud/director/v1_5/domain", "json", "only_key", "test-data/vcloud-json-only-key");
-      assertEquals(packageDir.listFiles().length, 9);
-   }
-
 }

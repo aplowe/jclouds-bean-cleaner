@@ -148,13 +148,17 @@ public class Bean extends BaseObject {
 
    // Convenience methods!
    public boolean isJaxb() {
-      return options.getFormat().supports(ParseOptions.Format.JAXB);
+      return options.getFormat().deserializes(ParseOptions.Format.JAXB);
    }
    
-   public boolean isGson() {
-      return options.getFormat().supports(ParseOptions.Format.JSON);
-   }   
-   
+   public boolean isJson() {
+      return options.getFormat().deserializes(ParseOptions.Format.JSON);
+   }
+
+   public boolean isJsonSerialize() {
+      return options.getFormat().serializes(ParseOptions.Format.JSON);
+   }
+
    public boolean isSubclass() {
       return superClass != null;
    }

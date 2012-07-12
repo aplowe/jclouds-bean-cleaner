@@ -91,6 +91,7 @@ public class ParseOptions {
    public static enum Format {
       JAXB,
       JSON,
+      JSON_SERIALIZE,
       MIXED,
       MINIMAL;
 
@@ -98,15 +99,20 @@ public class ParseOptions {
          return valueOf(v.toUpperCase());
       }
 
-      public boolean supports(Format other) {
-         if (this == other) return true;
-         switch (other) {
-            case JSON:
+      public boolean serializes(Format other) {
+         switch (other) {          
+            case JSON: {
+               return this == JSON_SERIALIZE || this == MIXED;
+            }
             case JAXB: {
-               return this == MIXED;
+               return this == JAXB || this == MIXED;
             }
          }
          return false;
+      }
+
+      public boolean deserializes(Format other) {
+         return this == other || serializes(other);
       }
    }
 

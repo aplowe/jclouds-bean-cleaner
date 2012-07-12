@@ -138,7 +138,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
    [/#if]
 [#-- Print fields --]
 [#list instanceFields![] as field]
-   [#if gson && field.name != field.serializedName]
+   [#if jsonSerialize && field.name != field.serializedName]
    @Named("${field.serializedName}")
    [/#if]
 [#if jaxb]
@@ -156,7 +156,7 @@ public [#if abstract]abstract [/#if]class ${type} [#if subclass]extends ${superC
 [/#list]
 
    [#-- Print constructors --]   
-   [#if gson]
+   [#if json]
    @ConstructorProperties({
       "${allFields[0].serializedName}"[#if allFields?size > 1][#list allFields[1..] as field], "${field.serializedName}"[/#list][/#if]
    })

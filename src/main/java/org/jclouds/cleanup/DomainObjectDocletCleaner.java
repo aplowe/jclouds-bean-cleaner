@@ -135,7 +135,7 @@ public class DomainObjectDocletCleaner extends Doclet {
          List<Bean> beans = Lists.newArrayList();
 
          for (ClassDoc clazz : root.classes()) {
-            if (clazz.containingClass() == null) {
+            if (clazz.containingClass() == null && clazz.isClass() && !clazz.isEnum()) {
                beans.add(parser.parseBean(clazz, parseOptions, false));
             }
          }
