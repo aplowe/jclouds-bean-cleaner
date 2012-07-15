@@ -16,7 +16,7 @@ import java.util.Set;
  * 
  * Note that the new object should have a constructor that takes ALL params with "Xenon" in the ConstructorParams
  */
-public class ThirdChild extends Parent<ThirdChild> {
+public class ThirdChild extends Parent {
 
    public Set<String> attX;
 

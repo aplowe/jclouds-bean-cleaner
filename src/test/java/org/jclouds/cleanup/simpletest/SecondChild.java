@@ -11,7 +11,7 @@ import java.util.Set;
  * Class comment of SecondChild
  * => Expect both getAttX() and getAttY() to be commented.
  */
-public class SecondChild extends Parent<SecondChild> {
+public class SecondChild extends Parent {
 
     public Set<String> attX;
 

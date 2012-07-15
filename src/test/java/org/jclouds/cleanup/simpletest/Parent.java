@@ -10,7 +10,7 @@ import javax.xml.bind.annotation.XmlElement;
  * A few lines....
  * Long
  */
-public class Parent<T extends Parent<T>> extends GrandParent<T> {
+public class Parent extends GrandParent {
    @Nullable
    public String parentAtt;
 

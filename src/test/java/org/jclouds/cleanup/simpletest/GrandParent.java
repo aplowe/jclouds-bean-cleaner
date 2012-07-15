@@ -1,17 +1,14 @@
 package org.jclouds.cleanup.simpletest;
 
-import com.google.gson.annotations.SerializedName;
+import com.google.inject.name.Named;
 import org.jclouds.javax.annotation.Nullable;
-
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
 
 /**
  * Class comment for GrandParent!
  * A few lines....
  * Long
  */
-public class GrandParent<T extends GrandParent<T>> {
+public class GrandParent {
 
     /** @return name is required */
     @Nullable
@@ -24,10 +21,10 @@ public class GrandParent<T extends GrandParent<T>> {
     @Nullable
     protected String description;
     
-    @SerializedName("Freddy")
+    @Named("Freddy")
     protected String freddy;
 
-    @SerializedName("Brian")
+    @Named("Brian")
     @Nullable
     protected String[] brian;
 

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Class comment for FirstChild - all on one line */
-public class FirstChild extends GrandParent<FirstChild> {
+public class FirstChild extends GrandParent {
 
     @Nullable
     public String attX;
