@@ -165,7 +165,7 @@ public class ClassDocParser {
          fieldType = fieldType.substring(0, fieldType.length() - 2);
          fieldType += ">";
       }
-      return fieldType;
+      return fieldType + type.dimension();
    }
 
    protected String removeUnnecessaryPackages(Type type, PackageDoc currentPackage, Collection<String> imports) {

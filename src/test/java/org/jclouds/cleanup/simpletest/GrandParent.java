@@ -29,12 +29,12 @@ public class GrandParent<T extends GrandParent<T>> {
 
     @SerializedName("Brian")
     @Nullable
-    protected String brian;
+    protected String[] brian;
 
     /** This element is NOT required
      * @return the value of brian
      */    
-    public String getBrian() {
+    public String[] getBrian() {
         return brian;
     }
 }
