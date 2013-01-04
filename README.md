@@ -41,3 +41,9 @@ To regenerate the beans for nova on my laptop I would do as follows::
     INFO: Javadoc returned successfully
     INFO: You passed the following arguments: -format json_serialize src/main/java/org/jclouds/openstack/nova/domain target/classes/
     Adam-Lowes-MacBook-Pro:nova aplowe$ 
+
+License
+-------
+Copyright (C) 2012-2013 Cloudsoft Corporation.
+
+Licensed under the Apache License, Version 2.0
