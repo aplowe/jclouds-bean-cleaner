@@ -1,3 +1,18 @@
+/*
+ * Copyright 2013 Cloudsoft Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.jclouds.cleanup;
 
 import com.google.common.base.Joiner;
@@ -31,6 +46,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * Interrogates the class structure using the doclet api, extracts the javadocs of classes, fields
  * and methods as required, and generates replacement source code.
  *
+ * @author Adam Lowe
  * @see <a href=
  *      "http://docs.oracle.com/javase/6/docs/technotes/guides/javadoc/doclet/overview.html"
  *      />
@@ -139,7 +155,7 @@ public class DomainObjectDocletCleaner extends Doclet {
                beans.add(parser.parseBean(clazz, parseOptions, false));
             }
          }
-         
+
          for (Bean bean : beans) {
             if (bean.getAllFields().size() > 0) {
                String className = bean.getType();
@@ -163,7 +179,7 @@ public class DomainObjectDocletCleaner extends Doclet {
             // Quick-fix for verbose is to use JDK logging
             LogManager.getLogManager().readConfiguration(
                   DomainObjectDocletCleaner.class.getResourceAsStream("/verbose-logging.properties"));
-         }else if (Objects.equal(opt[0], "-d")) {
+         } else if (Objects.equal(opt[0], "-d")) {
             outputPath = opt[1];
          } else if (Objects.equal(opt[0], "-format")) {
             parseOptions.setFormat(ParseOptions.Format.fromValue(opt[1]));
